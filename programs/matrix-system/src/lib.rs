@@ -1034,7 +1034,7 @@ pub struct RegisterWithSolDeposit<'info> {
         seeds = [b"program_sol_vault"],
         bump
     )]
-    pub program_sol_vault: Box<SystemAccount<'info>>,
+    pub program_sol_vault: SystemAccount<'info>,
     
     // TOKEN MINT
     /// CHECK: Token mint for token operations
@@ -1043,10 +1043,10 @@ pub struct RegisterWithSolDeposit<'info> {
     
     /// CHECK: Protocol fee account for Meteora
     #[account(mut)]
-    pub protocol_token_fee: UncheckedAccount<'info>,
+    pub protocol_token_fee: Box<UncheckedAccount<'info>>,
     
     /// CHECK: Meteora Dynamic AMM program
-    pub amm_program: UncheckedAccount<'info>,
+    pub amm_program: Box<UncheckedAccount<'info>>, 
 
     // Required programs
     pub token_program: Program<'info, Token>,
