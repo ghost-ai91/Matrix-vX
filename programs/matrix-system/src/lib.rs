@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::{self, clock::Clock};
-use anchor_spl::token::{self, Token, TokenAccount};
+use anchor_spl::token::{self, Token};
 use anchor_spl::associated_token::AssociatedToken;
 use chainlink_solana as chainlink;
 #[cfg(not(feature = "no-entrypoint"))]
@@ -1525,7 +1525,7 @@ pub mod referral_system {
       // Update reserved value for the referrer
       ctx.accounts.referrer.reserved_sol = deposit_amount;
   }
-  
+
  // LOGIC FOR SLOT 3: Pay referrer (SOL) and start recursion
 else if slot_idx == 2 {
   // NOVA VALIDAÇÃO: Se não é base, DEVE ter uplines
