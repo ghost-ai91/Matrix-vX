@@ -1043,10 +1043,10 @@ pub struct RegisterWithSolDeposit<'info> {
     
     /// CHECK: Protocol fee account for Meteora
     #[account(mut)]
-    pub protocol_token_fee: Box<UncheckedAccount<'info>>,
+    pub protocol_token_fee: UncheckedAccount<'info>,
     
     /// CHECK: Meteora Dynamic AMM program
-    pub amm_program: Box<UncheckedAccount<'info>>, 
+    pub amm_program: UncheckedAccount<'info>,
 
     // Required programs
     pub token_program: Program<'info, Token>,
