@@ -997,7 +997,7 @@ pub struct RegisterWithSolDeposit<'info> {
         associated_token::mint = token_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_donut_account: Account<'info, TokenAccount>,
+    pub user_donut_account: Box<Account<'info, TokenAccount>>,
     
     // WSOL mint
     /// CHECK: This is the fixed WSOL mint address
@@ -1034,7 +1034,7 @@ pub struct RegisterWithSolDeposit<'info> {
         seeds = [b"program_sol_vault"],
         bump
     )]
-    pub program_sol_vault: SystemAccount<'info>,
+    pub program_sol_vault: Box<SystemAccount<'info>>,
     
     // TOKEN MINT
     /// CHECK: Token mint for token operations
