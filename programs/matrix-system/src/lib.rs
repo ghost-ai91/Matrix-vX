@@ -592,7 +592,7 @@ fn calculate_swap_amount_out<'info>(
 }
 
 /// Process swap from WSOL to DONUT
-fn process_swap_and_burn<'info>(
+fn process_swap_wsol_to_donut<'info>(
     pool: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
     user_wsol_account: &AccountInfo<'info>,
@@ -605,12 +605,12 @@ fn process_swap_and_burn<'info>(
     b_vault_lp_mint: &AccountInfo<'info>,
     a_vault_lp: &AccountInfo<'info>,
     b_vault_lp: &AccountInfo<'info>,
-    token_mint: &AccountInfo<'info>,
     protocol_token_fee: &AccountInfo<'info>,
     vault_program: &AccountInfo<'info>,
-    token_program: &Program<'info, Token>,
+    token_program: &AccountInfo<'info>,
     amm_program: &AccountInfo<'info>,
-    amount: u64,
+    amount_in: u64,
+    minimum_amount_out: u64,
 ) -> Result<()> {
     msg!("Starting swap: {} WSOL for DONUT (min: {})", amount_in, minimum_amount_out);
     
@@ -628,7 +628,7 @@ fn process_swap_and_burn<'info>(
         solana_program::instruction::AccountMeta::new(a_vault_lp.key(), false),
         solana_program::instruction::AccountMeta::new(b_vault_lp.key(), false),
         solana_program::instruction::AccountMeta::new(protocol_token_fee.key(), false),
-        solana_program::instruction::AccountMeta::new_readonly(user.key(), true),
+        solana_program::instruction::AccountMeta::new_readonly(user_wallet.key(), true),
         solana_program::instruction::AccountMeta::new_readonly(vault_program.key(), false),
         solana_program::instruction::AccountMeta::new_readonly(token_program.key(), false),
     ];
@@ -660,7 +660,7 @@ fn process_swap_and_burn<'info>(
             a_vault_lp.clone(),
             b_vault_lp.clone(),
             protocol_token_fee.clone(),
-            user.clone(),
+            user_wallet.clone(),
             vault_program.clone(),
             token_program.clone(),
         ],
@@ -674,24 +674,24 @@ fn process_swap_and_burn<'info>(
 }
 
 /// Process swap and burn
-fn process_swap_and_burn<'a, 'b, 'c, 'info>(
-    pool: &'a AccountInfo<'info>,
-    user_wallet: &'a AccountInfo<'info>,
-    user_wsol_account: &'a AccountInfo<'info>,
-    user_donut_account: &'a AccountInfo<'info>,
-    a_vault: &'a AccountInfo<'info>,
-    b_vault: &'a AccountInfo<'info>,
-    a_token_vault: &'a AccountInfo<'info>,
-    b_token_vault: &'a AccountInfo<'info>,
-    a_vault_lp_mint: &'a AccountInfo<'info>,
-    b_vault_lp_mint: &'a AccountInfo<'info>,
-    a_vault_lp: &'a AccountInfo<'info>,
-    b_vault_lp: &'a AccountInfo<'info>,
-    token_mint: &'a AccountInfo<'info>,
-    protocol_token_fee: &'a AccountInfo<'info>,
-    vault_program: &'a AccountInfo<'info>,
-    token_program: &'a Program<'info, Token>,
-    amm_program: &'a AccountInfo<'info>,
+fn process_swap_and_burn<'info>(
+    pool: &AccountInfo<'info>,
+    user_wallet: &AccountInfo<'info>,
+    user_wsol_account: &AccountInfo<'info>,
+    user_donut_account: &AccountInfo<'info>,
+    a_vault: &AccountInfo<'info>,
+    b_vault: &AccountInfo<'info>,
+    a_token_vault: &AccountInfo<'info>,
+    b_token_vault: &AccountInfo<'info>,
+    a_vault_lp_mint: &AccountInfo<'info>,
+    b_vault_lp_mint: &AccountInfo<'info>,
+    a_vault_lp: &AccountInfo<'info>,
+    b_vault_lp: &AccountInfo<'info>,
+    token_mint: &AccountInfo<'info>,
+    protocol_token_fee: &AccountInfo<'info>,
+    vault_program: &AccountInfo<'info>,
+    token_program: &Program<'info, Token>,
+    amm_program: &AccountInfo<'info>,
     amount: u64,
 ) -> Result<()> {
     // Step 1: Calculate minimum DONUT expected
@@ -1407,14 +1407,14 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                 ]],
             )?;
             
-            // Zero out the reserved SOL value after payment
-            ctx.accounts.referrer.reserved_sol = 0;
+           // Zero out the reserved SOL value after payment
+           ctx.accounts.referrer.reserved_sol = 0;
         }
     }
     
     // Process the referrer's matrix
     let (chain_completed, upline_pubkey) = process_referrer_chain(
-        &ctx.accounts.user_wallet.key(),
+        &ctx.accounts.user.key(),
         &mut ctx.accounts.referrer,
         state.next_chain_id,
     )?;
@@ -1760,6 +1760,6 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
         }
     }
     Ok(())
-} 
+}
 
-} 
+}
