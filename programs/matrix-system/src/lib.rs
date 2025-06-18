@@ -1358,7 +1358,7 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
             &ctx.accounts.vault_program.to_account_info(),
             &token_program_info,
             &ctx.accounts.amm_program.to_account_info(),
-            current_deposit
+            deposit_amount 
         )?;
     } 
     // LOGIC FOR SLOT 2: Reserve SOL value
