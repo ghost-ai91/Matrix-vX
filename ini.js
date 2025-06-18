@@ -1,4 +1,4 @@
-// inicializacao.js
+// inicializacao.js - CORRIGIDO
 const {
   Connection,
   Keypair,
@@ -13,15 +13,12 @@ const path = require("path")
 
 // Receber parâmetros da linha de comando
 const args = process.argv.slice(2)
-const walletPath = args[0] || "./carteiras/carteira1.json" // Caminho padrão se não for fornecido
+const walletPath = args[0] || "/Users/dark/.config/solana/id.json"
 const configOutputPath = args[1] || "./matriz-config.json"
 
-// Carregue seu IDL compilado
-const idl = require("./target/idl/referral_system.json")
-
-// Configurações principais
+// Configurações principais - ATUALIZE COM SEU PROGRAM ID CORRETO
 const PROGRAM_ID = new PublicKey(
-  "CoRsyf6xCdgfKp64dG5oEKgRZLn5ckrux5YyCLoQ9rk4"
+  "6XoW7rrA651gNMXmMXtu9GqBRSSCgh41B6YCGzPd9d3h"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
@@ -35,8 +32,18 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
 const SYSVAR_RENT_PUBKEY = new PublicKey(
   "SysvarRent111111111111111111111111111111111"
 )
+
+// ATUALIZADO: Novo multisig treasury
 const MULTISIG_TREASURY = new PublicKey(
-  "9kfwkhwRmjRdcUKd8YBXJKnE5Yux9k111uUSN8zbNCYh"
+  "QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv"
+)
+
+// Novos endereços para swap
+const METEORA_AMM_PROGRAM = new PublicKey(
+  "Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB"
+)
+const METEORA_VAULT_PROGRAM = new PublicKey(
+  "24Uqj9JCLxUeoC3hGfh5W3s9FM9uCHDS2SG3LYwBpyTi"
 )
 
 // Função para carregar uma carteira a partir de um arquivo
@@ -49,70 +56,10 @@ function loadWalletFromFile(filePath) {
   )
 }
 
-// Função para formatar valores de token com 9 casas decimais
-function formatTokenAmount(amount) {
-  if (amount === 0) return "0"
-  const amountStr = amount.toString().padStart(10, "0")
-  const decimalPos = amountStr.length - 9
-  const integerPart = amountStr.substring(0, decimalPos) || "0"
-  const decimalPart = amountStr.substring(decimalPos)
-  return `${integerPart}.${decimalPart}`
-}
-
-// Função para calcular a ATA usando o método low-level como no script ata.js
-async function findAssociatedTokenAddress(owner, mint) {
-  const seeds = [
-    owner.toBuffer(),
-    SPL_TOKEN_PROGRAM_ID.toBuffer(),
-    mint.toBuffer(),
-  ]
-
-  const [address] = PublicKey.findProgramAddressSync(
-    seeds,
-    ASSOCIATED_TOKEN_PROGRAM_ID
-  )
-
-  return address
-}
-
-// Função para criar uma ATA usando instruções low-level, como no script ata.js
-async function createAssociatedTokenAccountInstruction(
-  payer,
-  associatedToken,
-  owner,
-  mint
-) {
-  return new TransactionInstruction({
-    keys: [
-      { pubkey: payer, isSigner: true, isWritable: true },
-      { pubkey: associatedToken, isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: false, isWritable: false },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      {
-        pubkey: SystemProgram.programId,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
-        pubkey: SPL_TOKEN_PROGRAM_ID,
-        isSigner: false,
-        isWritable: false,
-      },
-      {
-        pubkey: SYSVAR_RENT_PUBKEY,
-        isSigner: false,
-        isWritable: false,
-      },
-    ],
-    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
-    data: Buffer.from([]),
-  })
-}
-
 async function main() {
   try {
     console.log(
-      "🚀 INICIALIZANDO PROGRAMA DE MATRIZ COM DEPÓSITO FIXO 🚀"
+      "🚀 INICIALIZANDO PROGRAMA DE MATRIZ COM SWAP AND BURN 🚀"
     )
     console.log(
       "==============================================================="
@@ -122,7 +69,7 @@ async function main() {
 
     // Conectar à devnet
     const connection = new Connection(
-      "https://weathered-quiet-theorem.solana-devnet.quiknode.pro/198997b67cb51804baeb34ed2257274aa2b2d8c0",
+      "https://api.devnet.solana.com",
       "confirmed"
     )
     console.log("Conectando à Devnet")
@@ -150,7 +97,37 @@ async function main() {
       console.warn(
         "⚠️ Saldo baixo! Recomendamos pelo menos 1 SOL para a inicialização."
       )
+      return
+    }
 
+    // Carregar o IDL - CORRIGIDO
+    console.log("\n📝 Carregando IDL...")
+    let idl
+    try {
+      // Primeiro tenta carregar o IDL compilado
+      const idlPath = path.resolve("./target/idl/referral_system.json")
+      if (!fs.existsSync(idlPath)) {
+        console.error(`❌ IDL não encontrado em: ${idlPath}`)
+        console.error("Execute 'anchor build' primeiro para gerar o IDL")
+        return
+      }
+      
+      const idlString = fs.readFileSync(idlPath, "utf8")
+      idl = JSON.parse(idlString)
+      console.log("✅ IDL carregado com sucesso")
+      
+      // Verificar se o IDL tem a estrutura correta
+      if (!idl.name || !idl.instructions) {
+        console.error("❌ IDL inválido - estrutura incorreta")
+        return
+      }
+      
+      console.log(`📋 Programa: ${idl.name}`)
+      console.log(`📋 Versão: ${idl.version || "não especificada"}`)
+      console.log(`📋 Total de instruções: ${idl.instructions.length}`)
+      
+    } catch (e) {
+      console.error(`❌ Erro ao carregar IDL: ${e.message}`)
       return
     }
 
@@ -173,8 +150,10 @@ async function main() {
       { commitment: "confirmed" }
     )
 
-    // Inicializar o programa
+    // Inicializar o programa - AGORA COM IDL VÁLIDO
+    console.log("\n🔧 Inicializando programa...")
     const program = new Program(idl, PROGRAM_ID, provider)
+    console.log("✅ Programa inicializado")
 
     // Gerar um novo keypair para o estado
     const stateKeypair = Keypair.generate()
@@ -187,7 +166,6 @@ async function main() {
     console.log("\n📝 INICIALIZANDO O ESTADO DO PROGRAMA...")
 
     try {
-      // A instrução initialize inicializará last_mint_amount com 0 internamente
       const tx = await program.methods
         .initialize()
         .accounts({
@@ -200,11 +178,8 @@ async function main() {
 
       console.log("✅ PROGRAMA INICIALIZADO COM SUCESSO: " + tx)
       console.log(
-        `🔍 Link para explorador: https://explorer.solana.com/tx/${tx}`
+        `🔍 Link para explorador: https://explorer.solana.com/tx/${tx}?cluster=devnet`
       )
-      // console.log(
-      //   `🔍 Link para explorador: https://explorer.solana.com/tx/${tx}?cluster=devnet`
-      // )
 
       // Verificar informações do estado
       const stateInfo = await program.account.programState.fetch(
@@ -224,40 +199,8 @@ async function main() {
         "🆔 Próximo ID de chain: " + stateInfo.nextChainId.toString()
       )
 
-      // Exibir o valor do last_mint_amount, se estiver disponível no estado
-      if (stateInfo.lastMintAmount !== undefined) {
-        // Simplificar para evitar problemas de BigInt
-        const lastMintValue = Number(
-          stateInfo.lastMintAmount.toString()
-        )
-        console.log(
-          `🔒 Limitador de Mintagem (último valor): ${lastMintValue} (${formatTokenAmount(lastMintValue)} DONUT)`
-        )
-        console.log(
-          `ℹ️ Nota: O primeiro mint não terá limite (valor inicial = 0)`
-        )
-      } else {
-        console.log(
-          "ℹ️ Campo lastMintAmount não encontrado no estado - verifique se o contrato foi atualizado com este campo"
-        )
-      }
-
       // Verificar PDAs necessárias para integração
       console.log("\n🔑 PDAS PARA INTEGRAÇÃO:")
-
-      // PDA para autoridade de mintagem
-      const [tokenMintAuthority, tokenMintAuthorityBump] =
-        PublicKey.findProgramAddressSync(
-          [Buffer.from("token_mint_authority")],
-          PROGRAM_ID
-        )
-      console.log(
-        "🔑 PDA Mint Authority: " +
-          tokenMintAuthority.toString() +
-          " (Bump: " +
-          tokenMintAuthorityBump +
-          ")"
-      )
 
       // PDA para vault de SOL
       const [programSolVault, programSolVaultBump] =
@@ -273,140 +216,18 @@ async function main() {
           ")"
       )
 
-      // PDA para autoridade do vault de tokens
-      const [vaultAuthority, vaultAuthorityBump] =
-        PublicKey.findProgramAddressSync(
-          [Buffer.from("token_vault_authority")],
-          PROGRAM_ID
-        )
-      console.log(
-        "🔑 PDA do Vault Authority: " +
-          vaultAuthority.toString() +
-          " (Bump: " +
-          vaultAuthorityBump +
-          ")"
-      )
-
-      // Calcular ATA do vault de tokens usando nossa função personalizada
-      const programTokenVault = await findAssociatedTokenAddress(
-        vaultAuthority,
-        TOKEN_MINT
-      )
-      console.log(
-        "💰 ATA do Vault de Tokens: " + programTokenVault.toString()
-      )
-
-      // Verificar se a ATA já existe
-      try {
-        const ataInfo =
-          await connection.getAccountInfo(programTokenVault)
-        if (ataInfo) {
-          console.log("✅ ATA do Vault já existe!")
-
-          // Verificar saldo da ATA
-          try {
-            const tokenBalance =
-              await connection.getTokenAccountBalance(
-                programTokenVault
-              )
-            console.log(
-              `💎 Saldo de tokens no vault: ${tokenBalance.value.uiAmount} DONUT`
-            )
-          } catch (e) {
-            console.log(
-              `⚠️ Erro ao verificar saldo de tokens: ${e.message}`
-            )
-          }
-        } else {
-          console.log("⚠️ ATA do Vault ainda não foi criada")
-          console.log("💡 Criando ATA do vault...")
-
-          // Criar ATA para o vault usando nosso método personalizado
-          try {
-            const createAtaIx =
-              await createAssociatedTokenAccountInstruction(
-                walletKeypair.publicKey,
-                programTokenVault,
-                vaultAuthority,
-                TOKEN_MINT
-              )
-
-            const ataTx = new Transaction().add(createAtaIx)
-            ataTx.feePayer = walletKeypair.publicKey
-            const { blockhash } =
-              await connection.getLatestBlockhash()
-            ataTx.recentBlockhash = blockhash
-
-            // Assinar e enviar a transação
-            const signedTx =
-              await provider.wallet.signTransaction(ataTx)
-            const txid = await connection.sendRawTransaction(
-              signedTx.serialize()
-            )
-
-            // Aguardar a confirmação da transação
-            console.log("⏳ Aguardando confirmação da transação...")
-            await connection.confirmTransaction(txid)
-            console.log("✅ ATA do vault criada: " + txid)
-            console.log(
-              `🔍 Link para explorador: https://explorer.solana.com/tx/${txid}`
-            )
-            // console.log(
-            //   `🔍 Link para explorador: https://explorer.solana.com/tx/${txid}?cluster=devnet`
-            // )
-
-            // Verificar se a conta foi criada com sucesso
-            const newAccountInfo =
-              await connection.getAccountInfo(programTokenVault)
-            if (newAccountInfo) {
-              console.log(
-                "✅ Verificação confirmada: ATA do vault criada com sucesso"
-              )
-              console.log(
-                "📊 Tamanho da conta: " +
-                  newAccountInfo.data.length +
-                  " bytes"
-              )
-              console.log(
-                "👤 Proprietário da conta: " +
-                  newAccountInfo.owner.toString()
-              )
-            } else {
-              console.log(
-                "❌ ERRO: Não foi possível verificar a criação da ATA"
-              )
-            }
-          } catch (e) {
-            console.log("⚠️ Erro ao criar ATA do vault: " + e.message)
-            console.log(
-              "Por favor, tente usar o script 'ata.js' separadamente para criar a ATA."
-            )
-          }
-        }
-      } catch (e) {
-        console.log("⚠️ Erro ao verificar ATA do vault: " + e.message)
-      }
-
       // Gravar todas as informações importantes em um arquivo de configuração
       const configData = {
         programId: PROGRAM_ID.toString(),
         stateAddress: stateKeypair.publicKey.toString(),
-        statePrivateKey: Array.from(stateKeypair.secretKey), // Guardar para uso futuro se necessário
+        statePrivateKey: Array.from(stateKeypair.secretKey),
         tokenMint: TOKEN_MINT.toString(),
-        tokenMintAuthority: tokenMintAuthority.toString(),
-        tokenMintAuthorityBump,
         programSolVault: programSolVault.toString(),
         programSolVaultBump,
-        vaultAuthority: vaultAuthority.toString(),
-        vaultAuthorityBump,
-        programTokenVault: programTokenVault.toString(),
         ownerWallet: walletKeypair.publicKey.toString(),
         multisigTreasury: MULTISIG_TREASURY.toString(),
-        // Adicionar informação sobre o limitador de mintagem se disponível
-        lastMintAmount:
-          stateInfo.lastMintAmount !== undefined
-            ? stateInfo.lastMintAmount.toString()
-            : "0",
+        meteoraAmmProgram: METEORA_AMM_PROGRAM.toString(),
+        meteoraVaultProgram: METEORA_VAULT_PROGRAM.toString(),
       }
 
       // Criar diretório para o arquivo de configuração se não existir
@@ -434,43 +255,20 @@ async function main() {
       console.log(
         "🏦 MULTISIG TREASURY: " + MULTISIG_TREASURY.toString()
       )
-      console.log(
-        "🔑 PDA MINT AUTHORITY: " + tokenMintAuthority.toString()
-      )
       console.log("🔑 PDA SOL VAULT: " + programSolVault.toString())
-      console.log(
-        "🔑 PDA VAULT AUTHORITY: " + vaultAuthority.toString()
-      )
-      console.log(
-        "🔑 ATA DO VAULT DE TOKENS: " + programTokenVault.toString()
-      )
-
-      // Adicionar informação sobre o sistema de limitação de mintagem
-      if (stateInfo.lastMintAmount !== undefined) {
-        console.log("\n🔒 INFORMAÇÕES DO LIMITADOR DE MINTAGEM:")
-        console.log(
-          `🔒 Valor inicial: ${Number(stateInfo.lastMintAmount.toString())} (${formatTokenAmount(Number(stateInfo.lastMintAmount.toString()))} DONUT)`
-        )
-        console.log(
-          `ℹ️ O limitador de mintagem começa com valor zero e será atualizado automaticamente`
-        )
-        console.log(
-          `ℹ️ após o primeiro mint. Valores acima de 3x o último mint serão ajustados para`
-        )
-        console.log(
-          `ℹ️ usar o valor do último mint, garantindo que o contrato continue funcionando`
-        )
-        console.log(
-          `ℹ️ mesmo após períodos de inatividade ou alta volatilidade.`
-        )
-      }
+      
+      console.log("\n🔥 INFORMAÇÕES DO SISTEMA SWAP AND BURN:")
+      console.log(`🔥 O sistema agora faz swap de SOL para DONUT e queima 100% dos tokens`)
+      console.log(`🔥 Slot 1: Swap and Burn`)
+      console.log(`🔥 Slot 2: Reserva SOL para o referrer`)
+      console.log(`🔥 Slot 3: Paga SOL reservado e processa recursividade`)
+      
     } catch (error) {
       console.error(
         "❌ ERRO AO INICIALIZAR O ESTADO DA MATRIZ:",
         error
       )
 
-      // MELHORADO: Exibir detalhes do erro para diagnóstico
       if (error.logs) {
         console.log("\n📋 LOGS DE ERRO:")
         error.logs.forEach((log, i) => console.log(`${i}: ${log}`))
@@ -478,6 +276,7 @@ async function main() {
     }
   } catch (error) {
     console.error("❌ ERRO GERAL DURANTE O PROCESSO:", error)
+    console.error("Stack trace:", error.stack)
   } finally {
     process.exit(0)
   }

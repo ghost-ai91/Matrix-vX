@@ -894,7 +894,7 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
         associated_token::mint = wsol_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_wsol_account: Box<Account<'info, TokenAccount>>,
+    pub user_wsol_account: Account<'info, TokenAccount>,
     
     /// Account to receive DONUT tokens (will be created)
     #[account(
@@ -903,7 +903,7 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
         associated_token::mint = token_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_donut_account: Box<Account<'info, TokenAccount>>,
+    pub user_donut_account: Account<'info, TokenAccount>,
     
     // WSOL mint
     /// CHECK: This is the fixed WSOL mint address
@@ -988,7 +988,7 @@ pub struct RegisterWithSolDeposit<'info> {
         associated_token::mint = wsol_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_wsol_account: Box<Account<'info, TokenAccount>>,
+    pub user_wsol_account: Account<'info, TokenAccount>,
     
     // Account to receive DONUT tokens
     #[account(
@@ -997,7 +997,7 @@ pub struct RegisterWithSolDeposit<'info> {
         associated_token::mint = token_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_donut_account: Box<Account<'info, TokenAccount>>,
+    pub user_donut_account: Account<'info, TokenAccount>,
     
     // WSOL mint
     /// CHECK: This is the fixed WSOL mint address
