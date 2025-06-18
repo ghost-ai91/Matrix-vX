@@ -870,7 +870,7 @@ pub struct Initialize<'info> {
 #[instruction(deposit_amount: u64)]
 pub struct RegisterWithoutReferrerDeposit<'info> {
     #[account(mut)]
-    pub state: Account<'info, ProgramState>,
+    pub state: Box<Account<'info, ProgramState>>,
 
     #[account(mut)]
     pub owner: Signer<'info>,
@@ -885,7 +885,7 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
         seeds = [b"user_account", user_wallet.key().as_ref()],
         bump
     )]
-    pub user: Account<'info, UserAccount>,
+    pub user: Box<Account<'info, UserAccount>>,
 
     /// User's WSOL account (will be created)
     #[account(
@@ -894,7 +894,7 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
         associated_token::mint = wsol_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_wsol_account: Account<'info, TokenAccount>,
+    pub user_wsol_account: Box<Account<'info, TokenAccount>>,
     
     /// Account to receive DONUT tokens (will be created)
     #[account(
@@ -903,11 +903,11 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
         associated_token::mint = token_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_donut_account: Account<'info, TokenAccount>,
+    pub user_donut_account: Box<Account<'info, TokenAccount>>,
     
-    // WSOL mint - Usar UncheckedAccount em vez de AccountInfo para economizar espaço na pilha
+    // WSOL mint
     /// CHECK: This is the fixed WSOL mint address
-    pub wsol_mint: UncheckedAccount<'info>,
+    pub wsol_mint: AccountInfo<'info>,
 
     // Deposit Accounts (same logic as Slot 1)
     /// CHECK: Pool account (PDA)
@@ -950,8 +950,7 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    // Remover o rent pois não é necessário em versões recentes do Anchor
-    // pub rent: Sysvar<'info, Rent>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 // Structure for registration with SOL in a single transaction
@@ -960,14 +959,14 @@ pub struct RegisterWithoutReferrerDeposit<'info> {
 #[instruction(deposit_amount: u64)]
 pub struct RegisterWithSolDeposit<'info> {
     #[account(mut)]
-    pub state: Account<'info, ProgramState>,
+    pub state: Box<Account<'info, ProgramState>>,
 
     #[account(mut)]
     pub user_wallet: Signer<'info>,
 
     // Reference accounts
     #[account(mut)]
-    pub referrer: Account<'info, UserAccount>,
+    pub referrer: Box<Account<'info, UserAccount>>,
     
     #[account(mut)]
     pub referrer_wallet: SystemAccount<'info>,
@@ -980,7 +979,7 @@ pub struct RegisterWithSolDeposit<'info> {
         seeds = [b"user_account", user_wallet.key().as_ref()],
         bump
     )]
-    pub user: Account<'info, UserAccount>,
+    pub user: Box<Account<'info, UserAccount>>,
 
     // New WSOL ATA account
     #[account(
@@ -989,7 +988,7 @@ pub struct RegisterWithSolDeposit<'info> {
         associated_token::mint = wsol_mint,
         associated_token::authority = user_wallet
     )]
-    pub user_wsol_account: Account<'info, TokenAccount>,
+    pub user_wsol_account: Box<Account<'info, TokenAccount>>,
     
     // Account to receive DONUT tokens
     #[account(
@@ -1000,9 +999,9 @@ pub struct RegisterWithSolDeposit<'info> {
     )]
     pub user_donut_account: Account<'info, TokenAccount>,
     
-    // WSOL mint - Usar UncheckedAccount
+    // WSOL mint
     /// CHECK: This is the fixed WSOL mint address
-    pub wsol_mint: UncheckedAccount<'info>,
+    pub wsol_mint: AccountInfo<'info>,
 
     // Deposit Accounts (Slot 1 and 3)
     /// CHECK: Pool account (PDA)
@@ -1053,8 +1052,7 @@ pub struct RegisterWithSolDeposit<'info> {
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
-    // Remover o rent pois não é necessário em versões recentes do Anchor
-    // pub rent: Sysvar<'info, Rent>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 #[program]
