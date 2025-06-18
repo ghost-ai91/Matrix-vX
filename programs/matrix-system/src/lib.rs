@@ -673,7 +673,7 @@ fn process_swap_wsol_to_donut<'info>(
     Ok(())
 }
 
-/// Process swap and burn
+/// Process swap and burn - MODIFIED TO FIX LIFETIME ISSUES
 fn process_swap_and_burn<'info>(
     pool: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
@@ -690,7 +690,7 @@ fn process_swap_and_burn<'info>(
     token_mint: &AccountInfo<'info>,
     protocol_token_fee: &AccountInfo<'info>,
     vault_program: &AccountInfo<'info>,
-    token_program: &AccountInfo<'info>,
+    token_program: &AccountInfo<'info>,    // Changed to AccountInfo
     amm_program: &AccountInfo<'info>,
     amount: u64,
 ) -> Result<()> {
@@ -1139,7 +1139,7 @@ pub fn register_without_referrer(ctx: Context<RegisterWithoutReferrerDeposit>, d
         &[ctx.accounts.user_wsol_account.to_account_info()],
     ).map_err(|_| error!(ErrorCode::WrapSolFailed))?;
 
-    // Use the token_program.to_account_info() to get AccountInfo for the token program
+    // FIXED: Convert token_program to AccountInfo before passing it to process_swap_and_burn
     let token_program_info = ctx.accounts.token_program.to_account_info();
 
     // Process swap and burn with appropriate AccountInfo references
@@ -1338,8 +1338,10 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
             &[ctx.accounts.user_wsol_account.to_account_info()],
         ).map_err(|_| error!(ErrorCode::WrapSolFailed))?;
 
-        //swap and burn
+        // FIXED: Convert token_program to AccountInfo before passing it to process_swap_and_burn
         let token_program_info = ctx.accounts.token_program.to_account_info();
+        
+        // Process swap and burn with appropriate AccountInfo references
         process_swap_and_burn(
             &ctx.accounts.pool.to_account_info(),
             &ctx.accounts.user_wallet.to_account_info(),
@@ -1403,8 +1405,7 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
             process_pay_referrer(
                 &ctx.accounts.program_sol_vault.to_account_info(),
                 &ctx.accounts.referrer_wallet.to_account_info(),
-                ctx.accounts.referrer.reserved_sol,
-                &[&[
+                ctx.accounts.referrer.reserved_sol,&[&[
                     b"program_sol_vault".as_ref(),
                     &[ctx.bumps.program_sol_vault]
                 ]],
@@ -1531,7 +1532,9 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                         // SLOT 1: Swap and burn tokens
                         // Use the WSOL account that was kept open if not already closed
                         if !wsol_closed {
-                            // Em vez de fazer depósito na pool, fazemos swap e burn dos tokens
+                            // FIXED: Convert token_program to AccountInfo before passing to process_swap_and_burn
+                            let token_program_info = ctx.accounts.token_program.to_account_info();
+                            
                             process_swap_and_burn(
                                 &ctx.accounts.pool.to_account_info(),
                                 &ctx.accounts.user_wallet.to_account_info(),
@@ -1548,7 +1551,7 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                                 &ctx.accounts.token_mint.to_account_info(),
                                 &ctx.accounts.protocol_token_fee.to_account_info(),
                                 &ctx.accounts.vault_program.to_account_info(),
-                                &ctx.accounts.token_program,
+                                &token_program_info,
                                 &ctx.accounts.amm_program.to_account_info(),
                                 current_deposit
                             )?;
@@ -1714,6 +1717,9 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                 }
                 
                 // Swap and burn tokens with the remaining deposit
+                // FIXED: Convert token_program to AccountInfo before passing to process_swap_and_burn
+                let token_program_info = ctx.accounts.token_program.to_account_info();
+                
                 process_swap_and_burn(
                     &ctx.accounts.pool.to_account_info(),
                     &ctx.accounts.user_wallet.to_account_info(),
@@ -1730,7 +1736,7 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                     &ctx.accounts.token_mint.to_account_info(),
                     &ctx.accounts.protocol_token_fee.to_account_info(),
                     &ctx.accounts.vault_program.to_account_info(),
-                    &ctx.accounts.token_program,
+                    &token_program_info,
                     &ctx.accounts.amm_program.to_account_info(),
                     current_deposit
                 )?;
