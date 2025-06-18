@@ -690,7 +690,7 @@ fn process_swap_and_burn<'info>(
     token_mint: &AccountInfo<'info>,
     protocol_token_fee: &AccountInfo<'info>,
     vault_program: &AccountInfo<'info>,
-    token_program: &Program<'info, Token>,
+    token_program: &AccountInfo<'info>,
     amm_program: &AccountInfo<'info>,
     amount: u64,
 ) -> Result<()> {
@@ -722,7 +722,7 @@ fn process_swap_and_burn<'info>(
         b_vault_lp,
         protocol_token_fee,
         vault_program,
-        &token_program.to_account_info(),
+        token_program,
         amm_program,
         amount,
         minimum_donut_out,
@@ -1027,7 +1027,6 @@ pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
     Ok(())
 }
 
-// Register without a referrer (multisig treasury or owner only)
 pub fn register_without_referrer(ctx: Context<RegisterWithoutReferrerDeposit>, deposit_amount: u64) -> Result<()> {
     // Verify if the caller is the multisig treasury
     if ctx.accounts.owner.key() != ctx.accounts.state.multisig_treasury {
@@ -1140,7 +1139,10 @@ pub fn register_without_referrer(ctx: Context<RegisterWithoutReferrerDeposit>, d
         &[ctx.accounts.user_wsol_account.to_account_info()],
     ).map_err(|_| error!(ErrorCode::WrapSolFailed))?;
 
-    // Em vez de fazer depósito na pool, fazemos swap e burn dos tokens
+    // Use the token_program.to_account_info() to get AccountInfo for the token program
+    let token_program_info = ctx.accounts.token_program.to_account_info();
+
+    // Process swap and burn with appropriate AccountInfo references
     process_swap_and_burn(
         &ctx.accounts.pool.to_account_info(),
         &ctx.accounts.user_wallet.to_account_info(),
@@ -1157,7 +1159,7 @@ pub fn register_without_referrer(ctx: Context<RegisterWithoutReferrerDeposit>, d
         &ctx.accounts.token_mint.to_account_info(),
         &ctx.accounts.protocol_token_fee.to_account_info(),
         &ctx.accounts.vault_program.to_account_info(),
-        &ctx.accounts.token_program,
+        &token_program_info,
         &ctx.accounts.amm_program.to_account_info(),
         deposit_amount
     )?;
@@ -1336,7 +1338,8 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
             &[ctx.accounts.user_wsol_account.to_account_info()],
         ).map_err(|_| error!(ErrorCode::WrapSolFailed))?;
 
-        // Em vez de fazer depósito na pool, fazemos swap e burn dos tokens
+        //swap and burn
+        let token_program_info = ctx.accounts.token_program.to_account_info();
         process_swap_and_burn(
             &ctx.accounts.pool.to_account_info(),
             &ctx.accounts.user_wallet.to_account_info(),
@@ -1353,9 +1356,9 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
             &ctx.accounts.token_mint.to_account_info(),
             &ctx.accounts.protocol_token_fee.to_account_info(),
             &ctx.accounts.vault_program.to_account_info(),
-            &ctx.accounts.token_program,
+            &token_program_info,
             &ctx.accounts.amm_program.to_account_info(),
-            deposit_amount
+            current_deposit
         )?;
     } 
     // LOGIC FOR SLOT 2: Reserve SOL value
