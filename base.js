@@ -1,17 +1,17 @@
-// registro-base-com-atas.js - Cria ATAs primeiro, depois registra
+// base.js - Versão com heap frame aumentado
 const {
   Connection,
   Keypair,
   PublicKey,
   SystemProgram,
-  Transaction,
   ComputeBudgetProgram,
   SYSVAR_RENT_PUBKEY,
+  Transaction,
+  TransactionInstruction,
   sendAndConfirmTransaction,
 } = require("@solana/web3.js");
 const { AnchorProvider, Program, BN } = require("@coral-xyz/anchor");
 const fs = require("fs");
-const path = require("path");
 
 // Endereços verificados
 const VERIFIED_ADDRESSES = {
@@ -39,7 +39,6 @@ const VERIFIED_ADDRESSES = {
   METEORA_AMM_PROGRAM: new PublicKey("Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB"),
   
   // Protocol Fees
-  PROTOCOL_TOKEN_A_FEE: new PublicKey("2B6tLDfiQAMSPAKuHqRMvhuQ5dRKDWkYF6m7ggtzmCY5"),
   PROTOCOL_TOKEN_B_FEE: new PublicKey("88fLv3iEY7ubFCjwCzfzA7FsPG8xSBFicSPS8T8fX4Kq"),
 };
 
@@ -63,31 +62,13 @@ function getAssociatedTokenAddress(mint, owner) {
   return address;
 }
 
-// Função para criar instrução de ATA
-function createATAInstruction(payer, ata, owner, mint) {
-  return {
-    keys: [
-      { pubkey: payer, isSigner: true, isWritable: true },
-      { pubkey: ata, isSigner: false, isWritable: true },
-      { pubkey: owner, isSigner: false, isWritable: false },
-      { pubkey: mint, isSigner: false, isWritable: false },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-      { pubkey: SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
-    ],
-    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
-    data: Buffer.alloc(0),
-  };
-}
-
 async function main() {
-  console.log("🚀 REGISTRO COM CRIAÇÃO DE ATAs PRIMEIRO 🚀");
-  console.log("==========================================");
+  console.log("🚀 REGISTRO DE USUÁRIO BASE - HEAP FRAME AUMENTADO 🚀");
+  console.log("====================================================");
 
   try {
-    const args = process.argv.slice(2);
-    const walletPath = args[0] || "/Users/dark/.config/solana/id.json";
-    const configPath = args[1] || "./matriz-config.json";
+    const walletPath = process.argv[2] || "/Users/dark/.config/solana/id.json";
+    const configPath = process.argv[3] || "./matriz-config.json";
     
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     const idl = JSON.parse(fs.readFileSync("./target/idl/referral_system.json", 'utf8'));
@@ -97,89 +78,7 @@ async function main() {
     
     console.log(`👤 Treasury: ${treasuryWallet.publicKey.toString()}`);
     
-    const MULTISIG_TREASURY = new PublicKey(config.multisigTreasury);
-    if (!treasuryWallet.publicKey.equals(MULTISIG_TREASURY)) {
-      console.error(`❌ Carteira incorreta!`);
-      return;
-    }
-
-    // ETAPA 1: CRIAR ATAs
-    console.log("\n📋 ETAPA 1: CRIANDO ATAs...");
-    
-    const userWsolAccount = getAssociatedTokenAddress(VERIFIED_ADDRESSES.WSOL_MINT, treasuryWallet.publicKey);
-    const userDonutAccount = getAssociatedTokenAddress(VERIFIED_ADDRESSES.TOKEN_MINT, treasuryWallet.publicKey);
-    
-    // Verificar se ATAs existem
-    let needsWsolATA = false;
-    let needsDonutATA = false;
-    
-    try {
-      const wsolInfo = await connection.getAccountInfo(userWsolAccount);
-      if (!wsolInfo) needsWsolATA = true;
-    } catch {
-      needsWsolATA = true;
-    }
-    
-    try {
-      const donutInfo = await connection.getAccountInfo(userDonutAccount);
-      if (!donutInfo) needsDonutATA = true;
-    } catch {
-      needsDonutATA = true;
-    }
-    
-    if (needsWsolATA || needsDonutATA) {
-      const ataTransaction = new Transaction();
-      
-      if (needsWsolATA) {
-        console.log("📝 Criando ATA WSOL...");
-        ataTransaction.add(createATAInstruction(
-          treasuryWallet.publicKey,
-          userWsolAccount,
-          treasuryWallet.publicKey,
-          VERIFIED_ADDRESSES.WSOL_MINT
-        ));
-      }
-      
-      if (needsDonutATA) {
-        console.log("📝 Criando ATA DONUT...");
-        ataTransaction.add(createATAInstruction(
-          treasuryWallet.publicKey,
-          userDonutAccount,
-          treasuryWallet.publicKey,
-          VERIFIED_ADDRESSES.TOKEN_MINT
-        ));
-      }
-      
-      const ataTxid = await sendAndConfirmTransaction(connection, ataTransaction, [treasuryWallet]);
-      console.log(`✅ ATAs criadas: ${ataTxid}`);
-      
-      // Aguardar confirmação
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } else {
-      console.log("✅ ATAs já existem");
-    }
-
-    // ETAPA 2: REGISTRAR COM MENOS COMPUTE
-    console.log("\n📋 ETAPA 2: REGISTRANDO USUÁRIO...");
-    
-    const provider = new AnchorProvider(
-      connection,
-      {
-        publicKey: treasuryWallet.publicKey,
-        signTransaction: async (tx) => {
-          tx.partialSign(treasuryWallet);
-          return tx;
-        },
-        signAllTransactions: async (txs) => {
-          return txs.map((tx) => {
-            tx.partialSign(treasuryWallet);
-            return tx;
-          });
-        },
-      },
-      { commitment: 'confirmed' }
-    );
-
+    const provider = new AnchorProvider(connection, treasuryWallet, { commitment: 'confirmed' });
     const programId = new PublicKey(config.programId);
     const program = new Program(idl, programId, provider);
     
@@ -187,8 +86,8 @@ async function main() {
       [Buffer.from("user_account"), treasuryWallet.publicKey.toBuffer()],
       programId
     );
-
-    // Verificar se já está registrado
+    
+    // Verificar registro
     try {
       const userAccount = await program.account.userAccount.fetch(userPda);
       if (userAccount.isRegistered) {
@@ -198,77 +97,107 @@ async function main() {
     } catch {
       console.log("✅ Usuário não registrado");
     }
-
-    const DEPOSIT_AMOUNT = 100_000_000; // 0.1 SOL
     
-    // Remaining accounts do Vault A
-    const remainingAccounts = [
-      { pubkey: VERIFIED_ADDRESSES.A_VAULT, isWritable: true, isSigner: false },
-      { pubkey: VERIFIED_ADDRESSES.A_VAULT_LP, isWritable: true, isSigner: false },
-      { pubkey: VERIFIED_ADDRESSES.A_VAULT_LP_MINT, isWritable: true, isSigner: false },
-      { pubkey: VERIFIED_ADDRESSES.A_TOKEN_VAULT, isWritable: true, isSigner: false },
-    ];
-
+    // Derivar ATAs (assumindo que já existem)
+    const userWsolAccount = getAssociatedTokenAddress(VERIFIED_ADDRESSES.WSOL_MINT, treasuryWallet.publicKey);
+    const userDonutAccount = getAssociatedTokenAddress(VERIFIED_ADDRESSES.TOKEN_MINT, treasuryWallet.publicKey);
+    
+    console.log("\n📋 PREPARANDO REGISTRO COM HEAP AUMENTADO...");
+    
+    const DEPOSIT_AMOUNT = new BN(100_000_000); // 0.1 SOL
+    
+    // Criar instrução
+    const instruction = await program.methods
+      .registerWithoutReferrer(DEPOSIT_AMOUNT)
+      .accounts({
+        state: new PublicKey(config.stateAddress),
+        owner: treasuryWallet.publicKey,
+        userWallet: treasuryWallet.publicKey,
+        user: userPda,
+        userWsolAccount: userWsolAccount,
+        userDonutAccount: userDonutAccount,
+        wsolMint: VERIFIED_ADDRESSES.WSOL_MINT,
+        pool: VERIFIED_ADDRESSES.POOL_ADDRESS,
+        bVault: VERIFIED_ADDRESSES.B_VAULT,
+        bTokenVault: VERIFIED_ADDRESSES.B_TOKEN_VAULT,
+        bVaultLpMint: VERIFIED_ADDRESSES.B_VAULT_LP_MINT,
+        bVaultLp: VERIFIED_ADDRESSES.B_VAULT_LP,
+        vaultProgram: VERIFIED_ADDRESSES.METEORA_VAULT_PROGRAM,
+        tokenMint: VERIFIED_ADDRESSES.TOKEN_MINT,
+        protocolTokenFee: VERIFIED_ADDRESSES.PROTOCOL_TOKEN_B_FEE,
+        ammProgram: VERIFIED_ADDRESSES.METEORA_AMM_PROGRAM,
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        rent: SYSVAR_RENT_PUBKEY,
+      })
+      .remainingAccounts([
+        { pubkey: VERIFIED_ADDRESSES.A_VAULT, isWritable: true, isSigner: false },
+        { pubkey: VERIFIED_ADDRESSES.A_VAULT_LP, isWritable: true, isSigner: false },
+        { pubkey: VERIFIED_ADDRESSES.A_VAULT_LP_MINT, isWritable: true, isSigner: false },
+        { pubkey: VERIFIED_ADDRESSES.A_TOKEN_VAULT, isWritable: true, isSigner: false },
+      ])
+      .instruction();
+    
+    // Criar transação com configurações especiais
+    const transaction = new Transaction();
+    
+    // IMPORTANTE: Adicionar heap frame ANTES do compute units
+    transaction.add(
+      ComputeBudgetProgram.requestHeapFrame({
+        bytes: 256 * 1024, // 256KB - máximo permitido
+      })
+    );
+    
+    transaction.add(
+      ComputeBudgetProgram.setComputeUnitLimit({
+        units: 1_400_000, // Máximo
+      })
+    );
+    
+    transaction.add(instruction);
+    
+    // Tentar enviar diretamente (sem simulação)
+    console.log("📝 Enviando transação com heap aumentado...");
+    
     try {
-      // Usar menos compute units já que ATAs foram criadas
-      const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-        units: 800_000, // Reduzido pois ATAs já existem
-      });
-
-      const registerTx = await program.methods
-        .registerWithoutReferrer(new BN(DEPOSIT_AMOUNT))
-        .accounts({
-          state: new PublicKey(config.stateAddress),
-          owner: treasuryWallet.publicKey,
-          userWallet: treasuryWallet.publicKey,
-          user: userPda,
-          userWsolAccount: userWsolAccount,
-          userDonutAccount: userDonutAccount,
-          wsolMint: VERIFIED_ADDRESSES.WSOL_MINT,
-          pool: VERIFIED_ADDRESSES.POOL_ADDRESS,
-          bVault: VERIFIED_ADDRESSES.B_VAULT,
-          bTokenVault: VERIFIED_ADDRESSES.B_TOKEN_VAULT,
-          bVaultLpMint: VERIFIED_ADDRESSES.B_VAULT_LP_MINT,
-          bVaultLp: VERIFIED_ADDRESSES.B_VAULT_LP,
-          vaultProgram: VERIFIED_ADDRESSES.METEORA_VAULT_PROGRAM,
-          tokenMint: VERIFIED_ADDRESSES.TOKEN_MINT,
-          protocolTokenFee: VERIFIED_ADDRESSES.PROTOCOL_TOKEN_B_FEE,
-          ammProgram: VERIFIED_ADDRESSES.METEORA_AMM_PROGRAM,
-          tokenProgram: TOKEN_PROGRAM_ID,
-          systemProgram: SystemProgram.programId,
-          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-          rent: SYSVAR_RENT_PUBKEY,
-        })
-        .remainingAccounts(remainingAccounts)
-        .preInstructions([modifyComputeUnits])
-        .rpc({
-          skipPreflight: true,
+      const txid = await sendAndConfirmTransaction(
+        connection,
+        transaction,
+        [treasuryWallet],
+        {
+          skipPreflight: true, // Pular simulação
           commitment: 'confirmed',
-        });
+          maxRetries: 3,
+        }
+      );
       
-      console.log("\n✅ REGISTRO CONCLUÍDO!");
-      console.log(`📎 Transação: ${registerTx}`);
-      console.log(`🔍 Explorer: https://explorer.solana.com/tx/${registerTx}?cluster=devnet`);
-
-      // Verificar resultado
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log("\n✅ SUCESSO!");
+      console.log(`📎 Transação: ${txid}`);
+      console.log(`🔍 Explorer: https://explorer.solana.com/tx/${txid}?cluster=devnet`);
       
-      const userAccount = await program.account.userAccount.fetch(userPda);
-      console.log("\n📊 VERIFICAÇÃO:");
-      console.log(`✅ Registrado: ${userAccount.isRegistered}`);
-      console.log(`👤 Owner: ${userAccount.ownerWallet.toString()}`);
-      console.log(`🆔 IDs: Upline ${userAccount.upline.id}, Chain ${userAccount.chain.id}`);
-
     } catch (error) {
-      console.error("\n❌ Erro no registro:", error);
-      if (error.logs) {
-        console.log("\n📋 Logs:");
-        error.logs.forEach((log, i) => console.log(`${i}: ${log}`));
+      console.error("\n❌ Erro:", error);
+      
+      // Tentar buscar logs da transação
+      if (error.signature) {
+        try {
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          const tx = await connection.getTransaction(error.signature, {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          });
+          
+          if (tx?.meta?.logMessages) {
+            console.log("\n📋 Logs da transação:");
+            tx.meta.logMessages.forEach((log, i) => console.log(`${i}: ${log}`));
+          }
+        } catch {}
       }
     }
-
+    
   } catch (error) {
-    console.error("❌ Erro:", error);
+    console.error("❌ Erro geral:", error);
   }
 }
 
