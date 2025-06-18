@@ -1744,7 +1744,7 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                     &ctx.accounts.user_wallet.key(),
                     &[]
                 )?;
-                
+
                 let close_accounts = [
                     ctx.accounts.user_wsol_account.to_account_info(),
                     ctx.accounts.user_wallet.to_account_info(),
@@ -1758,6 +1758,7 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
             }
         }
     }
-
     Ok(())
-}
+} 
+
+} 
