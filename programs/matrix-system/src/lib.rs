@@ -148,6 +148,9 @@ impl UserAccount {
 pub enum ErrorCode {
     #[msg("Referrer account is not registered")]
     ReferrerNotRegistered,
+
+    #[msg("Missing required vault A accounts")]
+    MissingVaultAAccounts,
     
     #[msg("Not authorized")]
     NotAuthorized,
