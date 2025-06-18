@@ -3,7 +3,6 @@ use anchor_lang::solana_program::{self, clock::Clock};
 use anchor_spl::token::{self, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
 use chainlink_solana as chainlink;
-use solana_program::program_pack::Pack;
 #[cfg(not(feature = "no-entrypoint"))]
 use {solana_security_txt::security_txt};
 
@@ -675,24 +674,24 @@ fn process_swap_wsol_to_donut<'info>(
 }
 
 /// Process swap and burn
-fn process_swap_and_burn<'info>(
-    pool: &AccountInfo<'info>,
-    user_wallet: &AccountInfo<'info>,
-    user_wsol_account: &AccountInfo<'info>,
-    user_donut_account: &AccountInfo<'info>,
-    a_vault: &AccountInfo<'info>,
-    b_vault: &AccountInfo<'info>,
-    a_token_vault: &AccountInfo<'info>,
-    b_token_vault: &AccountInfo<'info>,
-    a_vault_lp_mint: &AccountInfo<'info>,
-    b_vault_lp_mint: &AccountInfo<'info>,
-    a_vault_lp: &AccountInfo<'info>,
-    b_vault_lp: &AccountInfo<'info>,
-    token_mint: &AccountInfo<'info>,
-    protocol_token_fee: &AccountInfo<'info>,
-    vault_program: &AccountInfo<'info>,
-    token_program: &Program<'info, Token>,
-    amm_program: &AccountInfo<'info>,
+fn process_swap_and_burn<'a, 'b, 'c, 'info>(
+    pool: &'a AccountInfo<'info>,
+    user_wallet: &'a AccountInfo<'info>,
+    user_wsol_account: &'a AccountInfo<'info>,
+    user_donut_account: &'a AccountInfo<'info>,
+    a_vault: &'a AccountInfo<'info>,
+    b_vault: &'a AccountInfo<'info>,
+    a_token_vault: &'a AccountInfo<'info>,
+    b_token_vault: &'a AccountInfo<'info>,
+    a_vault_lp_mint: &'a AccountInfo<'info>,
+    b_vault_lp_mint: &'a AccountInfo<'info>,
+    a_vault_lp: &'a AccountInfo<'info>,
+    b_vault_lp: &'a AccountInfo<'info>,
+    token_mint: &'a AccountInfo<'info>,
+    protocol_token_fee: &'a AccountInfo<'info>,
+    vault_program: &'a AccountInfo<'info>,
+    token_program: &'a Program<'info, Token>,
+    amm_program: &'a AccountInfo<'info>,
     amount: u64,
 ) -> Result<()> {
     // Step 1: Calculate minimum DONUT expected
@@ -1474,7 +1473,6 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(ctx: Context<'a, 'b, 'c, 'in
                     // Get current upline information
                     let upline_info = &upline_accounts[base_idx];       // Account PDA
                     let upline_wallet = &upline_accounts[base_idx + 1]; // Wallet 
-                    let upline_donut = &upline_accounts[base_idx + 2];  // ATA for DONUT
                     
                     // OPTIMIZATION - Basic validations before processing the account
                     if upline_wallet.owner != &solana_program::system_program::ID {
