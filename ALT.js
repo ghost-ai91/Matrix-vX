@@ -15,13 +15,13 @@ const idl = require("./target/idl/referral_system.json")
 
 // Configurações principais
 const PROGRAM_ID = new PublicKey(
-  "2wFmCLVQ8pSF2aKu43gLv2vzasUHhtmAA9HffBDXcRfF"
+  "6XoW7rrA651gNMXmMXtu9GqBRSSCgh41B6YCGzPd9d3h"
 )
 const TOKEN_MINT = new PublicKey(
-  "3dCXCZd3cbKHT7jQSLzRNJQYu1zEzaD8FHi4MWHLX4DZ"
+  "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
 )
 const MULTISIG_TREASURY = new PublicKey(
-  "Eu22Js2qTu5bCr2WFY2APbvhDqAhUZpkYKmVsfeyqR2N"
+  "QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv"
 )
 
 function loadWalletFromFile(filePath) {
@@ -165,6 +165,11 @@ async function testAddressLookupTables() {
       new web3.PublicKey(
         "6f2FVX5UT5uBtgknc8fDj119Z7DQoLJeKRmBq7j1zsVi"
       ), // A_VAULT_LP_MINT
+
+      new web3.PublicKey(
+        "4ndfcH16GKY76bzDkKfyVwHMoF8oY75KES2VaAhUYksN"
+      ), // A_VAULT
+
 
       // Endereços do Vault B (SOL)
       new web3.PublicKey(
