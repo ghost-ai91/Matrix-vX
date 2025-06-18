@@ -592,9 +592,9 @@ fn calculate_swap_amount_out<'info>(
 }
 
 /// Process swap from WSOL to DONUT
-fn process_swap_wsol_to_donut<'info>(
+fn process_swap_and_burn<'info>(
     pool: &AccountInfo<'info>,
-    user: &AccountInfo<'info>,
+    user_wallet: &AccountInfo<'info>,
     user_wsol_account: &AccountInfo<'info>,
     user_donut_account: &AccountInfo<'info>,
     a_vault: &AccountInfo<'info>,
@@ -605,12 +605,12 @@ fn process_swap_wsol_to_donut<'info>(
     b_vault_lp_mint: &AccountInfo<'info>,
     a_vault_lp: &AccountInfo<'info>,
     b_vault_lp: &AccountInfo<'info>,
+    token_mint: &AccountInfo<'info>,
     protocol_token_fee: &AccountInfo<'info>,
     vault_program: &AccountInfo<'info>,
-    token_program: &AccountInfo<'info>,
+    token_program: &Program<'info, Token>,
     amm_program: &AccountInfo<'info>,
-    amount_in: u64,
-    minimum_amount_out: u64,
+    amount: u64,
 ) -> Result<()> {
     msg!("Starting swap: {} WSOL for DONUT (min: {})", amount_in, minimum_amount_out);
     
