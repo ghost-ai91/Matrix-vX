@@ -106,19 +106,23 @@ fn user_exists_in_airdrop<'info>(
     user_wallet: &Pubkey
 ) -> bool {
     // Derive the user PDA in the airdrop program
+    msg!("Checking if user exists in airdrop program: {}", user_wallet);
     let seeds = &[b"user_account", user_wallet.as_ref()];
+    msg!("Seeds: {:?}", seeds);
     let (user_pda, _) = Pubkey::find_program_address(seeds, &AIRDROP_PROGRAM_ID);
-    
+    msg!("User PDA: {}", user_pda);
     // Check in remaining_accounts for the user PDA
     for account_info in remaining_accounts {
+        msg!("Checking account: {}", account_info.key());
         if account_info.key() == user_pda {
+            msg!("Account found: {}", account_info.key());
             // Check if the account exists, is owned by the airdrop program, and has data
             return account_info.owner == &AIRDROP_PROGRAM_ID && 
                    account_info.lamports() > 0 && 
                    !account_info.data_is_empty();
         }
     }
-    
+    msg!("User PDA not found, assuming user doesn't exist");
     // User PDA not found, assuming user doesn't exist
     false
 }

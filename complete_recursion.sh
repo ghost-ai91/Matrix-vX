@@ -1,40 +1,78 @@
 #!/bin/bash
 
-# complete_recursion.sh - Script for recursive wallet registration
-# Usage: ./complete_recursion.sh [DEPTH] [INITIAL_REFERRER] [--referrer=ADDRESS]
+# complete_recursion.sh - Script for recursive wallet registration with matrix completion tracking
+# Usage: ./complete_recursion.sh [--depth=N] [--total-time=MINUTES] [--referrer=ADDRESS] [INITIAL_REFERRER]
 
 set -e  # Exit on any error
 
 # Configuration defaults
-DEPTH=2
-INITIAL_REFERRER="6xRvuzuXw76k7JMkk7fL1TZLJR8SFbnM43xCwWJmwkUP"
+DEPTH=5  # Changed default to 5 for matrix completion cycles
+INITIAL_REFERRER="QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv"
+
 CARTEIRAS_DIR="./carteiras"
 CONFIG_PATH="./matriz-config.json"
-ALT_ADDRESS="Au4echvjsxBzVTDYbYX2GYiUQSrX4NyvJTAfq7zyc6si"
+ALT_ADDRESS="FhNUsPQsuoNtLRJQ9HQgSPF6vNDysJvDMnp5HXsr85Jw"
 TRANSFER_AMOUNT="0.15"  # SOL amount to transfer to each wallet
 
 # Parse command line arguments - FIXED VERSION
 FIXED_REFERRER=""
 USE_FIXED_REFERRER=false
+TOTAL_TIME_MINUTES=""
+USE_INTERVAL_PROCESSING=false
 show_help=false
 
-# First pass: check for --referrer= and --help
+# Process arguments properly
+remaining_args=()
+
 for arg in "$@"; do
     case $arg in
+        --depth=*)
+            DEPTH="${arg#*=}"
+            if ! [[ "$DEPTH" =~ ^[0-9]+$ ]]; then
+                echo "Error: depth must be a number"
+                exit 1
+            fi
+            # Don't add to remaining_args since it's a flag
+            ;;
+        --total-time=*)
+            TOTAL_TIME_MINUTES="${arg#*=}"
+            if ! [[ "$TOTAL_TIME_MINUTES" =~ ^[0-9]+$ ]]; then
+                echo "Error: total-time must be a number (minutes)"
+                exit 1
+            fi
+            USE_INTERVAL_PROCESSING=true
+            # Don't add to remaining_args since it's a flag
+            ;;
         --referrer=*)
             FIXED_REFERRER="${arg#*=}"
             USE_FIXED_REFERRER=true
+            # Don't add to remaining_args since it's a flag
             ;;
         -h|--help)
             show_help=true
             ;;
+        *)
+            # This is a positional argument
+            remaining_args+=("$arg")
+            ;;
     esac
 done
 
-# Second pass: parse positional arguments only if not using fixed referrer
-if [[ "$USE_FIXED_REFERRER" == false && "$show_help" == false ]]; then
-    DEPTH=${1:-2}
-    INITIAL_REFERRER=${2:-"6xRvuzuXw76k7JMkk7fL1TZLJR8SFbnM43xCwWJmwkUP"}
+# Handle positional arguments
+if [[ "$USE_FIXED_REFERRER" == false && "$show_help" == false && ${#remaining_args[@]} -gt 0 ]]; then
+    INITIAL_REFERRER="${remaining_args[0]}"
+fi
+
+# Calculate interval timing if total-time is provided
+INTERVAL_SECONDS=0
+if [[ "$USE_INTERVAL_PROCESSING" == true ]]; then
+    # Convert minutes to seconds and divide by 36
+    TOTAL_SECONDS=$((TOTAL_TIME_MINUTES * 60))
+    INTERVAL_SECONDS=$((TOTAL_SECONDS / 36))
+    
+    if [[ $INTERVAL_SECONDS -lt 1 ]]; then
+        INTERVAL_SECONDS=1  # Minimum 1 second interval
+    fi
 fi
 
 # Colors for output
@@ -42,6 +80,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}🚀 COMPLETE RECURSION SCRIPT STARTED${NC}"
@@ -56,6 +95,13 @@ else
     echo -e "👥 Initial Referrer: ${INITIAL_REFERRER}"
 fi
 echo -e "💰 Transfer Amount: ${TRANSFER_AMOUNT} SOL per wallet"
+
+if [[ "$USE_INTERVAL_PROCESSING" == true ]]; then
+    echo -e "${CYAN}⏰ INTERVAL PROCESSING ENABLED${NC}"
+    echo -e "${CYAN}⏱️  Total Time: ${TOTAL_TIME_MINUTES} minutes${NC}"
+    echo -e "${CYAN}⏳ Interval: ${INTERVAL_SECONDS} seconds between each 3-depth batch${NC}"
+    echo -e "${CYAN}📊 Total Intervals: 36 (${TOTAL_TIME_MINUTES} min ÷ 36)${NC}"
+fi
 echo ""
 
 # Function to extract public key from wallet JSON file
@@ -140,7 +186,105 @@ register_wallet() {
     fi
 }
 
-# Function to run recursive registration
+# Function to wait for interval
+wait_for_interval() {
+    local batch_number=$1
+    local description="$2"
+    
+    if [[ "$USE_INTERVAL_PROCESSING" == true ]]; then
+        echo -e "${CYAN}⏳ Batch ${batch_number}: ${description}${NC}"
+        echo -e "${CYAN}⏱️  Waiting ${INTERVAL_SECONDS} seconds before next batch...${NC}"
+        
+        # Show countdown
+        for ((i=INTERVAL_SECONDS; i>0; i--)); do
+            echo -ne "\r${CYAN}⏰ Next batch in: ${i}s ${NC}"
+            sleep 1
+        done
+        echo -e "\r${GREEN}✅ Interval complete - proceeding...${NC}                    "
+        echo ""
+    fi
+}
+
+# Function to register all wallets with fixed referrer - UPDATED WITH INTERVALS
+register_all_with_fixed_referrer() {
+    echo -e "${YELLOW}🔄 REGISTERING ALL WALLETS WITH FIXED REFERRER...${NC}"
+    echo -e "${RED}⚠️  IMPORTANT: Using FIXED referrer for ALL registrations${NC}"
+    
+    local wallet_files=($(get_wallet_files))
+    local total_wallets=${#wallet_files[@]}
+    local successful_registrations=0
+    
+    echo -e "📋 Total wallets available: ${total_wallets}"
+    echo -e "👥 Using FIXED referrer: ${FIXED_REFERRER}"
+    echo -e "🚫 Recursive logic: DISABLED"
+    echo ""
+    
+    # Process wallets in batches of 3 if interval processing is enabled
+    if [[ "$USE_INTERVAL_PROCESSING" == true ]]; then
+        local batch_size=3
+        local batch_count=$(((total_wallets + batch_size - 1) / batch_size))
+        
+        echo -e "${CYAN}📦 Processing in ${batch_count} batches of ${batch_size} wallets each${NC}"
+        echo ""
+        
+        for ((batch=0; batch<batch_count; batch++)); do
+            local start_idx=$((batch * batch_size))
+            local end_idx=$((start_idx + batch_size))
+            if [[ $end_idx -gt $total_wallets ]]; then
+                end_idx=$total_wallets
+            fi
+            
+            echo -e "${BLUE}📦 BATCH $((batch + 1))/${batch_count}: Wallets $((start_idx + 1))-${end_idx}${NC}"
+            
+            for ((i=start_idx; i<end_idx; i++)); do
+                local current_wallet="${wallet_files[$i]}"
+                local wallet_name=$(basename "$current_wallet")
+                
+                echo -e "  📍 WALLET $((i+1))/${total_wallets}: ${wallet_name}"
+                echo -e "  👥 Referrer: ${FIXED_REFERRER} (FIXED - NO CHANGES)"
+                
+                if register_wallet "$current_wallet" "$FIXED_REFERRER"; then
+                    successful_registrations=$((successful_registrations + 1))
+                    echo -e "    ${GREEN}✅ Registration successful with FIXED referrer${NC}"
+                else
+                    echo -e "    ${RED}❌ Registration failed${NC}"
+                    echo -e "    ${YELLOW}⚠️ Continuing with next wallet...${NC}"
+                fi
+                echo ""
+            done
+            
+            # Wait for interval before next batch (except for last batch)
+            if [[ $((batch + 1)) -lt $batch_count ]]; then
+                wait_for_interval $((batch + 1)) "Wallets $((start_idx + 1))-${end_idx} completed"
+            fi
+        done
+    else
+        # Original processing without intervals
+        for ((i=0; i<total_wallets; i++)); do
+            local current_wallet="${wallet_files[$i]}"
+            local wallet_name=$(basename "$current_wallet")
+            
+            echo -e "${BLUE}📍 WALLET $((i+1))/${total_wallets}: ${wallet_name}${NC}"
+            echo -e "👥 Referrer: ${FIXED_REFERRER} (FIXED - NO CHANGES)"
+            
+            if register_wallet "$current_wallet" "$FIXED_REFERRER"; then
+                successful_registrations=$((successful_registrations + 1))
+                echo -e "    ${GREEN}✅ Registration successful with FIXED referrer${NC}"
+            else
+                echo -e "    ${RED}❌ Registration failed${NC}"
+                echo -e "    ${YELLOW}⚠️ Continuing with next wallet...${NC}"
+            fi
+            
+            echo ""
+        done
+    fi
+    
+    echo -e "${GREEN}✅ FIXED REFERRER REGISTRATION COMPLETED${NC}"
+    echo -e "📊 Successful registrations: ${successful_registrations}/${total_wallets}"
+    echo -e "👥 ALL registrations used referrer: ${FIXED_REFERRER}"
+}
+
+# Function to run recursive registration - UPDATED WITH INTERVALS
 run_recursive_registration() {
     echo -e "${YELLOW}🔄 STARTING RECURSIVE REGISTRATION...${NC}"
     
@@ -151,6 +295,8 @@ run_recursive_registration() {
     echo -e "📋 Total wallets available: ${total_wallets}"
     echo -e "🎯 Target depth: ${DEPTH} levels"
     echo ""
+    
+    local batch_counter=1
     
     # Level 1: Register carteira1 with initial referrer
     echo -e "${BLUE}📍 LEVEL 1${NC}"
@@ -168,6 +314,12 @@ run_recursive_registration() {
     
     echo -e "🔑 New referrer for next level: $current_referrer"
     echo ""
+    
+    # Wait after level 1 if using intervals
+    if [[ "$USE_INTERVAL_PROCESSING" == true ]]; then
+        wait_for_interval $batch_counter "Level 1 completed"
+        batch_counter=$((batch_counter + 1))
+    fi
     
     # Levels 2 to DEPTH-1: Register 2 wallets per level (slots 1 and 2)
     for ((level=2; level<DEPTH; level++)); do
@@ -192,6 +344,12 @@ run_recursive_registration() {
             fi
         done
         echo ""
+        
+        # Wait after every 3 levels or after completing this level if using intervals
+        if [[ "$USE_INTERVAL_PROCESSING" == true && $((level % 3)) -eq 1 ]]; then
+            wait_for_interval $batch_counter "Level $level completed"
+            batch_counter=$((batch_counter + 1))
+        fi
     done
     
     # Final level: Register all 3 slots
@@ -213,6 +371,11 @@ run_recursive_registration() {
     echo -e "${GREEN}✅ RECURSIVE REGISTRATION COMPLETED${NC}"
     echo -e "📊 Total wallets used: $wallet_index"
     echo -e "📊 Total wallets available: $total_wallets"
+    
+    if [[ "$USE_INTERVAL_PROCESSING" == true ]]; then
+        echo -e "${CYAN}⏰ Total processing time: ~${TOTAL_TIME_MINUTES} minutes${NC}"
+        echo -e "${CYAN}📊 Intervals used: $((batch_counter - 1))${NC}"
+    fi
 }
 
 # Function to show summary
@@ -235,43 +398,6 @@ show_summary() {
     echo ""
     echo -e "${GREEN}✅ PROCESS COMPLETED${NC}"
     echo -e "📊 Total wallets processed: $registered_count"
-}
-
-# Function to register all wallets with fixed referrer - CORRECTED
-register_all_with_fixed_referrer() {
-    echo -e "${YELLOW}🔄 REGISTERING ALL WALLETS WITH FIXED REFERRER...${NC}"
-    echo -e "${RED}⚠️  IMPORTANT: Using FIXED referrer for ALL registrations${NC}"
-    
-    local wallet_files=($(get_wallet_files))
-    local total_wallets=${#wallet_files[@]}
-    local successful_registrations=0
-    
-    echo -e "📋 Total wallets available: ${total_wallets}"
-    echo -e "👥 Using FIXED referrer: ${FIXED_REFERRER}"
-    echo -e "🚫 Recursive logic: DISABLED"
-    echo ""
-    
-    for ((i=0; i<total_wallets; i++)); do
-        local current_wallet="${wallet_files[$i]}"
-        local wallet_name=$(basename "$current_wallet")
-        
-        echo -e "${BLUE}📍 WALLET $((i+1))/${total_wallets}: ${wallet_name}${NC}"
-        echo -e "👥 Referrer: ${FIXED_REFERRER} (FIXED - NO CHANGES)"
-        
-        if register_wallet "$current_wallet" "$FIXED_REFERRER"; then
-            successful_registrations=$((successful_registrations + 1))
-            echo -e "    ${GREEN}✅ Registration successful with FIXED referrer${NC}"
-        else
-            echo -e "    ${RED}❌ Registration failed${NC}"
-            echo -e "    ${YELLOW}⚠️ Continuing with next wallet...${NC}"
-        fi
-        
-        echo ""
-    done
-    
-    echo -e "${GREEN}✅ FIXED REFERRER REGISTRATION COMPLETED${NC}"
-    echo -e "📊 Successful registrations: ${successful_registrations}/${total_wallets}"
-    echo -e "👥 ALL registrations used referrer: ${FIXED_REFERRER}"
 }
 
 # Main execution
@@ -343,26 +469,34 @@ main() {
         run_recursive_registration
     fi
     
-    show_summary
+    # show_summary
 }
 
 # Show usage if help requested
 if [[ "$show_help" == true ]]; then
-    echo "Usage: $0 [DEPTH] [INITIAL_REFERRER] [--referrer=ADDRESS]"
+    echo "Usage: $0 [--depth=N] [--total-time=MINUTES] [--referrer=ADDRESS] [INITIAL_REFERRER]"
     echo ""
-    echo "Arguments:"
-    echo "  DEPTH              Number of levels for recursive mode (default: 2)"
-    echo "  INITIAL_REFERRER   Initial referrer address for recursive mode"
-    echo "                     (default: 6xRvuzuXw76k7JMkk7fL1TZLJR8SFbnM43xCwWJmwkUP)"
-    echo ""
-    echo "Options:"
-    echo "  --referrer=ADDRESS Use fixed referrer for ALL wallets (ignores recursive logic)"
+    echo "Parameters:"
+    echo "  --depth=N            Number of levels for recursive mode (default: 2)"
+    echo "  --total-time=MINUTES Total time in minutes for interval processing (divides by 36)"
+    echo "  --referrer=ADDRESS   Use fixed referrer for ALL wallets (ignores recursive logic)"
+    echo "  INITIAL_REFERRER     Initial referrer address for recursive mode"
+    echo "                       (default: 6xRvuzuXw76k7JMkk7fL1TZLJR8SFbnM43xCwWJmwkUP)"
     echo ""
     echo "Examples:"
-    echo "  $0                                    # Recursive mode with defaults (depth=2)"
-    echo "  $0 3                                 # Recursive mode with 3 levels"
-    echo "  $0 4 ABC...123                       # Recursive mode with custom initial referrer"
-    echo "  $0 --referrer=ABC...123              # Fixed referrer mode (all wallets → ABC...123)"
+    echo "  $0                                      # Recursive mode with defaults (depth=2)"
+    echo "  $0 --depth=4                           # Recursive mode with 4 levels"
+    echo "  $0 --depth=3 CustomReferrer            # 3 levels with custom initial referrer"
+    echo "  $0 --referrer=ABC...123                # Fixed referrer mode (all wallets → ABC...123)"
+    echo "  $0 --total-time=50                     # 50 minutes total, ~83s intervals (50÷36=1.39min)"
+    echo "  $0 --depth=5 --total-time=30           # 5 levels with 30 minutes interval processing"
+    echo "  $0 --referrer=ABC...123 --total-time=60 # Fixed referrer with 60 minutes intervals"
+    echo ""
+    echo "Interval Processing:"
+    echo "  - When --total-time=X is provided, the script divides X minutes by 36"
+    echo "  - Each 3-depth batch processing waits for the calculated interval"
+    echo "  - Example: --total-time=36 means 1 minute between each batch"
+    echo "  - Example: --total-time=72 means 2 minutes between each batch"
     echo ""
     echo "Modes:"
     echo "  RECURSIVE MODE:"
@@ -376,6 +510,7 @@ if [[ "$show_help" == true ]]; then
     echo "    - All wallets register with the same referrer"
     echo "    - Uses all available wallets"
     echo "    - Simpler logic, no depth limitations"
+    echo "    - With --total-time: processes in batches of 3 wallets"
     exit 0
 fi
 

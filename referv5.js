@@ -28,7 +28,12 @@ const configPath = args[1] || "./matriz-config.json"
 const referrerAddressStr =
   args[2] || "QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv" // Obrigatório
 const altAddress =
-  args[3] || "Au4echvjsxBzVTDYbYX2GYiUQSrX4NyvJTAfq7zyc6si" // Obrigatório
+  args[3] || "FhNUsPQsuoNtLRJQ9HQgSPF6vNDysJvDMnp5HXsr85Jw" // Obrigatório
+
+// AIRDROP PROGRAM CONSTANTS - ADDED FOR MATRIX COMPLETION NOTIFICATION
+const AIRDROP_PROGRAM_ID = new PublicKey(
+  "2AUXkFgK6Cf8c8H3YswbpuE97D2jAcLmjq5iZ1afNYa6"
+)
 
 // Endereços verificados (igual ao contrato)
 const VERIFIED_ADDRESSES = {
@@ -241,6 +246,115 @@ function getAssociatedTokenAddress(mint, owner) {
     ASSOCIATED_TOKEN_PROGRAM_ID
   )
   return address
+}
+
+// NEW: Function to prepare airdrop program accounts for matrix completion
+async function prepareAirdropAccounts(connection, referrerWallet) {
+  console.log(
+    "\n🎯 PREPARING AIRDROP PROGRAM ACCOUNTS FOR MATRIX COMPLETION..."
+  )
+
+  try {
+    // 1. Derive airdrop program state PDA
+    const [airdropStatePDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("program_state")],
+      AIRDROP_PROGRAM_ID
+    )
+    console.log(
+      `  📋 Airdrop State PDA: ${airdropStatePDA.toString()}`
+    )
+
+    // 2. Derive user account PDA in airdrop program
+    const [airdropUserPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("user_account"), referrerWallet.toBuffer()],
+      AIRDROP_PROGRAM_ID
+    )
+    console.log(`  👤 Airdrop User PDA: ${airdropUserPDA.toString()}`)
+
+    // 3. Get current week from airdrop program state
+    let currentWeek = 1 // Default to week 1
+    try {
+      const airdropStateInfo = await connection.getAccountInfo(
+        airdropStatePDA
+      )
+      if (airdropStateInfo && airdropStateInfo.data.length > 0) {
+        // Parse the current week from the state (offset after discriminator and other fields)
+        // Based on AirdropProgramState structure: admin(32) + donut_token_mint(32) + current_week(1)
+        const dataOffset = 8 + 32 + 32 // Skip discriminator + admin + donut_token_mint
+        if (airdropStateInfo.data.length > dataOffset) {
+          currentWeek = airdropStateInfo.data[dataOffset]
+          console.log(`  📅 Current week from state: ${currentWeek}`)
+        }
+      }
+    } catch (e) {
+      console.log(
+        `  ⚠️ Could not read current week, using default: ${currentWeek}`
+      )
+    }
+
+    // 4. Derive current week data PDA
+    const currentWeekBytes = Buffer.alloc(1)
+    currentWeekBytes.writeUInt8(currentWeek, 0)
+    const [currentWeekDataPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("weekly_data"), currentWeekBytes],
+      AIRDROP_PROGRAM_ID
+    )
+    console.log(
+      `  📊 Current Week Data PDA: ${currentWeekDataPDA.toString()}`
+    )
+
+    // 5. Derive next week data PDA
+    const nextWeek = currentWeek + 1
+    const nextWeekBytes = Buffer.alloc(1)
+    nextWeekBytes.writeUInt8(nextWeek, 0)
+    const [nextWeekDataPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("weekly_data"), nextWeekBytes],
+      AIRDROP_PROGRAM_ID
+    )
+    console.log(
+      `  📈 Next Week Data PDA: ${nextWeekDataPDA.toString()}`
+    )
+
+    // Return the accounts needed for CPI
+    const airdropAccounts = [
+      {
+        pubkey: airdropStatePDA,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: airdropUserPDA,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: currentWeekDataPDA,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: nextWeekDataPDA,
+        isWritable: true,
+        isSigner: false,
+      },
+      {
+        pubkey: referrerWallet,
+        isWritable: true,
+        isSigner: true,
+      },
+    ]
+
+    console.log(
+      `  ✅ Prepared ${airdropAccounts.length} airdrop accounts`
+    )
+    return airdropAccounts
+  } catch (error) {
+    console.log(
+      `  ❌ Error preparing airdrop accounts: ${error.message}`
+    )
+    // Return empty array if there's an error - the program will handle missing accounts
+    return []
+  }
 }
 
 // Função para criar instrução de criação de ATA
@@ -461,6 +575,12 @@ async function main() {
       )
     }
 
+    // NEW: Prepare airdrop program accounts for matrix completion
+    const airdropAccounts = await prepareAirdropAccounts(
+      connection,
+      referrerAddress
+    )
+
     // Carregar ALT
     console.log("\n🔍 CARREGANDO ALT...")
     const lookupTableAccount = await getAddressLookupTable(
@@ -518,7 +638,7 @@ async function main() {
         instructions.push(createDonutATA)
       }
 
-      // Remaining accounts
+      // Remaining accounts - UPDATED TO INCLUDE AIRDROP ACCOUNTS
       const vaultAAccounts = [
         {
           pubkey: VERIFIED_ADDRESSES.A_VAULT,
@@ -555,10 +675,12 @@ async function main() {
         },
       ]
 
+      // FIXED: Build remaining accounts in the correct order
       const allRemainingAccounts = [
-        ...vaultAAccounts,
-        ...chainlinkAccounts,
-        ...uplineAccounts,
+        ...vaultAAccounts, // [0..3] - Vault A accounts
+        ...chainlinkAccounts, // [4..5] - Chainlink accounts
+        ...uplineAccounts, // [6..] - Uplines for slot 3 processing
+        ...airdropAccounts, // [...] - Airdrop program accounts for matrix completion
       ]
 
       console.log(
@@ -568,9 +690,10 @@ async function main() {
       console.log(`  - Chainlink: 2 contas`)
       console.log(
         `  - Uplines: ${uplineAccounts.length} contas (${
-          uplineAccounts.length / 3
+          uplineAccounts.length / 2
         } uplines)`
       )
+      console.log(`  - Airdrop: ${airdropAccounts.length} contas`)
 
       // Gerar instrução principal
       const registerIx = await program.methods

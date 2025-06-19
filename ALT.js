@@ -15,7 +15,7 @@ const idl = require("./target/idl/referral_system.json")
 
 // Configurações principais
 const PROGRAM_ID = new PublicKey(
-  "6VcvQ6GJawGCo2fVAsze4YXNK2agJErh88hRfpfDDWzd"
+  "HTEtvwPnpCxDiWKDvfQFiSxF3QwFEWze653WprtAotfa"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
@@ -33,7 +33,8 @@ function loadWalletFromFile(filePath) {
   )
 }
 const args = process.argv.slice(2)
-const walletPath = args[0]
+const walletPath =
+  args[0] || "/Users/starsoft-front-master/.config/solana/id.json"
 
 async function testAddressLookupTables() {
   try {
@@ -148,7 +149,7 @@ async function testAddressLookupTables() {
         "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
       ), // TOKEN_MINT
       new web3.PublicKey(
-        "9QrxUustVomRJ5uY5MLCFXHwAivHw9BqxzEbPAaVFPeK"
+        "HHvHrbT3iBh3gyj4wQJjv3FbZrVZr83MRJMbtkZpn3kR"
       ), // STATE_ADDRESS
 
       // Endereços da Pool Meteora
