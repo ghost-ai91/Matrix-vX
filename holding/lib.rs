@@ -4,25 +4,25 @@ use anchor_spl::token::{self, Token};
 use anchor_spl::associated_token::AssociatedToken;
 use chainlink_solana as chainlink;
 #[cfg(not(feature = "no-entrypoint"))]
-// use {solana_security_txt::security_txt};
+use {solana_security_txt::security_txt};
 
 
-declare_id!("6VcvQ6GJawGCo2fVAsze4YXNK2agJErh88hRfpfDDWzd");
+declare_id!("6XoW7rrA651gNMXmMXtu9GqBRSSCgh41B6YCGzPd9d3h");
 
-// #[cfg(not(feature = "no-entrypoint"))]
-// security_txt! {
-//     name: "Referral Matrix System",
-//     project_url: "https://matrix.matrix",
-//     contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
-//     policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
-//     preferred_languages: "en",
-//     source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
-//     source_revision: env!("GITHUB_SHA", "unknown-revision"),
-//     source_release: env!("PROGRAM_VERSION", "unknown-version"),
-//     encryption: "",
-//     auditors: "",
-//     acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
-// }
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Referral Matrix System",
+    project_url: "https://matrix.matrix",
+    contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
+    policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
+    preferred_languages: "en",
+    source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
+    source_revision: env!("GITHUB_SHA", "unknown-revision"),
+    source_release: env!("PROGRAM_VERSION", "unknown-version"),
+    encryption: "",
+    auditors: "",
+    acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
+}
 
 // Minimum deposit amount in USD (10 dollars in base units - 8 decimals)
 const MINIMUM_USD_DEPOSIT: u64 = 10_00000000; // 10 USD with 8 decimals (Chainlink format)
@@ -142,7 +142,7 @@ impl UserAccount {
                            8;  // reserved_sol
 }
 
-// Error codes - ADDING NEW ERROR CODES
+// Error codes - ADICIONANDO NOVOS CÓDIGOS DE ERRO
 #[error_code]
 pub enum ErrorCode {
     #[msg("Referrer account is not registered")]
@@ -625,9 +625,9 @@ fn calculate_swap_amount_out<'info>(
     
     let result = donut_tokens as u64;
     
-    // Apply 99% slippage tolerance (accept only 1% of the expected)
+    // Apply 99% slippage tolerance (aceita receber apenas 1% do esperado)
     let minimum_out = result
-        .checked_mul(1)  // 1% of the expected value
+        .checked_mul(1)  // 1% do valor esperado
         .and_then(|n| n.checked_div(100))
         .ok_or(error!(ErrorCode::MeteoraCalculationOverflow))?;
     
@@ -869,24 +869,6 @@ fn process_referrer_chain<'info>(
    }
 
    Ok((false, referrer.key()))
-}
-
-fn get_matrix_account_info<'a, 'b, 'c, 'info>(ctx: &Context<'a, 'b, 'c, 'info, RegisterWithSolDeposit<'info>>) -> Result<(AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>)> {
-    let pool_info = ctx.accounts.pool.to_account_info();
-    let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
-    let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
-    let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
-    let b_vault_info = ctx.accounts.b_vault.to_account_info();
-    let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
-    let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
-    let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
-    let token_mint_info = ctx.accounts.token_mint.to_account_info();
-    let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
-    let vault_program_info = ctx.accounts.vault_program.to_account_info();
-    let token_program_info = ctx.accounts.token_program.to_account_info();
-    let amm_program_info = ctx.accounts.amm_program.to_account_info();
-    
-    Ok((pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info))
 }
 
 // Accounts for initialize instruction
@@ -1281,13 +1263,13 @@ pub mod referral_system {
             &ctx.accounts.user_wallet.to_account_info(),
             &ctx.accounts.user_wsol_account.to_account_info(),
             &ctx.accounts.user_donut_account.to_account_info(),
-            &vault_a.a_vault,
+            vault_a.a_vault,
             &ctx.accounts.b_vault.to_account_info(),
-            &vault_a.a_token_vault,
+            vault_a.a_token_vault,
             &ctx.accounts.b_token_vault.to_account_info(),
-            &vault_a.a_vault_lp_mint,
+            vault_a.a_vault_lp_mint,
             &ctx.accounts.b_vault_lp_mint.to_account_info(),
-            &vault_a.a_vault_lp,
+            vault_a.a_vault_lp,
             &ctx.accounts.b_vault_lp.to_account_info(),
             &ctx.accounts.token_mint.to_account_info(),
             &ctx.accounts.protocol_token_fee.to_account_info(),
@@ -1414,17 +1396,13 @@ pub mod referral_system {
         // OPTIMIZATION - Reduce capacity to current size
         new_upline.shrink_to_fit();
 
-        // Get upline ID from global counter and update state in a limited scope
-        let (upline_id, chain_id) = {
-            let state = &mut ctx.accounts.state;
-            let upline_id = state.next_upline_id;
-            let chain_id = state.next_chain_id;
+        // Get upline ID from global counter
+        let state = &mut ctx.accounts.state;
+        let upline_id = state.next_upline_id;
+        let chain_id = state.next_chain_id;
 
-            state.next_upline_id += 1; // Increment for next user
-            state.next_chain_id += 1;
-            
-            (upline_id, chain_id)
-        }; // state borrow ends here
+        state.next_upline_id += 1; // Increment for next user
+        state.next_chain_id += 1;
 
         // Create new user data
         let user = &mut ctx.accounts.user;
@@ -1478,10 +1456,22 @@ pub mod referral_system {
           &[ctx.accounts.user_wsol_account.to_account_info()],
       ).map_err(|_| error!(ErrorCode::WrapSolFailed))?;
 
-      // Clone AccountInfo to avoid lifetime problems
-      let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+      // Clone AccountInfo para evitar problemas de lifetime
+      let pool_info = ctx.accounts.pool.to_account_info();
+      let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+      let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+      let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+      let b_vault_info = ctx.accounts.b_vault.to_account_info();
+      let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+      let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+      let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+      let token_mint_info = ctx.accounts.token_mint.to_account_info();
+      let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+      let vault_program_info = ctx.accounts.vault_program.to_account_info();
+      let token_program_info = ctx.accounts.token_program.to_account_info();
+      let amm_program_info = ctx.accounts.amm_program.to_account_info();
 
-      // Process swap and burn with cloned AccountInfo
+      // Process swap and burn com AccountInfo clonados
       process_swap_and_burn(
           &pool_info,
           &user_wallet_info,
@@ -1538,19 +1528,19 @@ pub mod referral_system {
 
  // LOGIC FOR SLOT 3: Pay referrer (SOL) and start recursion
 else if slot_idx == 2 {
-  // NEW VALIDATION: If not base, MUST have uplines
+  // NOVA VALIDAÇÃO: Se não é base, DEVE ter uplines
   if ctx.accounts.referrer.referrer.is_some() {
-      // Not base, MUST have uplines
+      // Não é base, DEVE ter uplines
       let upline_start_idx = VAULT_A_ACCOUNTS_COUNT + 2;
       if ctx.remaining_accounts.len() <= upline_start_idx {
-          msg!("❌ Error: Slot 3 of non-base user requires uplines!");
+          msg!("❌ Erro: Slot 3 de usuário não-base requer uplines!");
           return Err(error!(ErrorCode::UplineRequiredForNonBase));
       }
       
-      // Verify if there are at least 3 accounts (1 group)
+      // Verificar se tem pelo menos 3 contas (1 trio)
       let upline_accounts = &ctx.remaining_accounts[upline_start_idx..];
-      if upline_accounts.len() < 2 || upline_accounts.len() % 2 != 0 {
-          msg!("❌ Error: Invalid uplines - must be a multiple of 2");
+      if upline_accounts.len() < 3 || upline_accounts.len() % 3 != 0 {
+          msg!("❌ Erro: Uplines inválidas - deve ser múltiplo de 3");
           return Err(error!(ErrorCode::MissingUplineAccount));
       }
   }
@@ -1574,8 +1564,8 @@ else if slot_idx == 2 {
       ctx.accounts.referrer.reserved_sol = 0;
   }
   
-  // 2. ALWAYS wrap SOL to WSOL in slot 3
-  // This ensures we have WSOL for all processing
+  // 2. SEMPRE fazer wrap do SOL para WSOL no slot 3
+  // Isso garante que tenhamos WSOL para todo o processamento
   let transfer_ix = solana_program::system_instruction::transfer(
       &ctx.accounts.user_wallet.key(),
       &ctx.accounts.user_wsol_account.key(),
@@ -1608,7 +1598,7 @@ else if slot_idx == 2 {
   let (chain_completed, upline_pubkey) = process_referrer_chain(
       &ctx.accounts.user.key(),
       &mut ctx.accounts.referrer,
-      ctx.accounts.state.next_chain_id,
+      state.next_chain_id,
   )?;
 
   // Add cleanup:
@@ -1616,7 +1606,6 @@ else if slot_idx == 2 {
 
   // If the matrix was completed, increment the global ID for the next one
   if chain_completed {
-      let state = &mut ctx.accounts.state;
       state.next_chain_id += 1;
   }
 
@@ -1630,16 +1619,28 @@ else if slot_idx == 2 {
       // Calculate remaining accounts offset - skip the vault A accounts and Chainlink accounts
       let upline_start_idx = VAULT_A_ACCOUNTS_COUNT + 2;
 
-      // Check if it's a base user
+      // Verificar se é usuário base
       let is_base_user = ctx.accounts.referrer.referrer.is_none();
       
       if is_base_user {
-          msg!("👤 Base user detected - executing swap and burn required");
+          msg!("👤 Usuário base detectado - executando swap and burn obrigatório");
           
-          // Base user ALWAYS does swap and burn in slot 3
+          // Base user SEMPRE faz swap and burn no slot 3
           if current_deposit > 0 {
               // Clone AccountInfo
-              let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+              let pool_info = ctx.accounts.pool.to_account_info();
+              let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+              let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+              let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+              let b_vault_info = ctx.accounts.b_vault.to_account_info();
+              let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+              let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+              let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+              let token_mint_info = ctx.accounts.token_mint.to_account_info();
+              let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+              let vault_program_info = ctx.accounts.vault_program.to_account_info();
+              let token_program_info = ctx.accounts.token_program.to_account_info();
+              let amm_program_info = ctx.accounts.amm_program.to_account_info();
               
               process_swap_and_burn(
                   &pool_info,
@@ -1662,44 +1663,44 @@ else if slot_idx == 2 {
                   current_deposit
               )?;
               
-              msg!("✅ Swap and burn executed for base user");
+              msg!("✅ Swap and burn executado para usuário base");
               deposit_allocated = true;
               current_deposit = 0;
           }
       } else {
-          // Not base - MUST process uplines
+          // Não é base - DEVE processar uplines
           if ctx.remaining_accounts.len() > upline_start_idx && current_deposit > 0 {
               let upline_accounts = &ctx.remaining_accounts[upline_start_idx..];
               
-              // OPTIMIZATION - Check if remaining upline accounts are multiples of 2
-              if upline_accounts.len() % 2 != 0 {
+              // OPTIMIZATION - Check if remaining upline accounts are multiples of 3
+              if upline_accounts.len() % 3 != 0 {
                   return Err(error!(ErrorCode::MissingUplineAccount));
               }
               
-              // Calculate number of pairs (PDA, wallet)
-              let pair_count = upline_accounts.len() / 2;
+              // Calculate number of trios (PDA, wallet, ATA)
+              let trio_count = upline_accounts.len() / 3;
               
               // OPTIMIZATION - Process in smaller batches to save memory
               const BATCH_SIZE: usize = 1; 
               
               // Calculate number of batches (division with rounding up)
-              let batch_count = (pair_count + BATCH_SIZE - 1) / BATCH_SIZE;
+              let batch_count = (trio_count + BATCH_SIZE - 1) / BATCH_SIZE;
               
               // Process each batch
               for batch_idx in 0..batch_count {
                   // Calculate batch range
-                  let start_pair = batch_idx * BATCH_SIZE;
-                  let end_pair = std::cmp::min(start_pair + BATCH_SIZE, pair_count);
+                  let start_trio = batch_idx * BATCH_SIZE;
+                  let end_trio = std::cmp::min(start_trio + BATCH_SIZE, trio_count);
                   
                   // Iterate through trios in current batch
-                  for pair_index in start_pair..end_pair {
+                  for trio_index in start_trio..end_trio {
                       // Check maximum depth and if deposit is remaining
-                      if pair_index >= MAX_UPLINE_DEPTH || current_deposit == 0 {
+                      if trio_index >= MAX_UPLINE_DEPTH || current_deposit == 0 {
                           break;
                       }
 
-                      // Calculate base index for each pair
-                      let base_idx = pair_index * 2;
+                      // Calculate base index for each trio
+                      let base_idx = trio_index * 3;
                       
                       // Get current upline information
                       let upline_info = &upline_accounts[base_idx];       // Account PDA
@@ -1759,10 +1760,22 @@ else if slot_idx == 2 {
                           // SLOT 1: Swap and burn tokens
                           // Use the WSOL account that was kept open if not already closed
                           if !wsol_closed {
-                              // Get matrix account info
-                              let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+                              // Clone AccountInfo para evitar problemas de lifetime
+                              let pool_info = ctx.accounts.pool.to_account_info();
+                              let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+                              let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+                              let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+                              let b_vault_info = ctx.accounts.b_vault.to_account_info();
+                              let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+                              let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+                              let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+                              let token_mint_info = ctx.accounts.token_mint.to_account_info();
+                              let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+                              let vault_program_info = ctx.accounts.vault_program.to_account_info();
+                              let token_program_info = ctx.accounts.token_program.to_account_info();
+                              let amm_program_info = ctx.accounts.amm_program.to_account_info();
 
-                              // Instead of making a deposit in the pool, we do swap and burn of the tokens
+                              // Em vez de fazer depósito na pool, fazemos swap e burn dos tokens
                               process_swap_and_burn(
                                   &pool_info,
                                   &user_wallet_info,
@@ -1873,7 +1886,6 @@ else if slot_idx == 2 {
                       // Process matrix completion only if necessary
                       if chain_completed {
                           // Get new ID for the reset matrix
-                          let state = &mut ctx.accounts.state;
                           let next_chain_id_value = state.next_chain_id;
                           state.next_chain_id += 1;
                           
@@ -1902,13 +1914,13 @@ else if slot_idx == 2 {
                           break;
                       }
                       
-                      // If allocated deposit, stop processing
+                      // Se depósito foi alocado, parar
                       if deposit_allocated {
                           break;
                       }
                       
                       // Check maximum depth after processing
-                      if pair_index >= MAX_UPLINE_DEPTH - 1 {
+                      if trio_index >= MAX_UPLINE_DEPTH - 1 {
                           break;
                       }
                   }
@@ -1919,12 +1931,12 @@ else if slot_idx == 2 {
                   }
               }
 
-              // CRITICAL: If all uplines were processed and deposit was not allocated, MUST do swap and burn
+              // CRÍTICO: Se processou todas uplines e não alocou, DEVE fazer swap and burn
               if !deposit_allocated && current_deposit > 0 {
-                  msg!("⚠️ All uplines processed without allocating deposit");
-                  msg!("💱 Executing swap and burn required");
+                  msg!("⚠️ Todas uplines processadas sem alocar depósito");
+                  msg!("💱 Executando swap and burn obrigatório");
                   
-                  // Reopen WSOL if necessary
+                  // Reabrir WSOL se necessário
                   if wsol_closed {
                       let transfer_ix = solana_program::system_instruction::transfer(
                           &ctx.accounts.user_wallet.key(),
@@ -1953,8 +1965,20 @@ else if slot_idx == 2 {
                       wsol_closed = false;
                   }
                   
-                  // Get matrix account info
-                  let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+                  // Clone AccountInfo para evitar problemas de lifetime
+                  let pool_info = ctx.accounts.pool.to_account_info();
+                  let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+                  let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+                  let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+                  let b_vault_info = ctx.accounts.b_vault.to_account_info();
+                  let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+                  let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+                  let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+                  let token_mint_info = ctx.accounts.token_mint.to_account_info();
+                  let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+                  let vault_program_info = ctx.accounts.vault_program.to_account_info();
+                  let token_program_info = ctx.accounts.token_program.to_account_info();
+                  let amm_program_info = ctx.accounts.amm_program.to_account_info();
                   
                   // Swap and burn tokens with the remaining deposit
                   process_swap_and_burn(
@@ -1980,17 +2004,17 @@ else if slot_idx == 2 {
                   
                   deposit_allocated = true;
                   current_deposit = 0;
-                  msg!("✅ Swap and burn executed after processing all uplines");
+                  msg!("✅ Swap and burn executado após processar todas uplines");
               }
           } else {
-              // Error: not base but no uplines
+              // Erro: não é base mas não tem uplines
               return Err(error!(ErrorCode::UplineRequiredForNonBase));
           }
       }
       
-      // FINAL SECURITY VALIDATION
+      // VALIDAÇÃO FINAL DE SEGURANÇA
       if current_deposit > 0 || !deposit_allocated {
-          msg!("❌ CRITICAL ERROR: Deposit was not allocated!");
+          msg!("❌ ERRO CRÍTICO: Depósito não foi alocado!");
           msg!("  current_deposit: {}", current_deposit);
           msg!("  deposit_allocated: {}", deposit_allocated);
           return Err(error!(ErrorCode::UnusedDepositDetected));
