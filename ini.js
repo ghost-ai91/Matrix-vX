@@ -13,12 +13,13 @@ const path = require("path")
 
 // Receber parâmetros da linha de comando
 const args = process.argv.slice(2)
-const walletPath = args[0] || "/Users/dark/.config/solana/id.json"
+const walletPath =
+  args[0] || "/Users/starsoft-front-master/.config/solana/id.json"
 const configOutputPath = args[1] || "./matriz-config.json"
 
 // Configurações principais - ATUALIZE COM SEU PROGRAM ID CORRETO
 const PROGRAM_ID = new PublicKey(
-  "6XoW7rrA651gNMXmMXtu9GqBRSSCgh41B6YCGzPd9d3h"
+  "6VcvQ6GJawGCo2fVAsze4YXNK2agJErh88hRfpfDDWzd"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
@@ -69,7 +70,7 @@ async function main() {
 
     // Conectar à devnet
     const connection = new Connection(
-      "https://api.devnet.solana.com",
+      "https://weathered-quiet-theorem.solana-devnet.quiknode.pro/198997b67cb51804baeb34ed2257274aa2b2d8c0",
       "confirmed"
     )
     console.log("Conectando à Devnet")
@@ -105,27 +106,32 @@ async function main() {
     let idl
     try {
       // Primeiro tenta carregar o IDL compilado
-      const idlPath = path.resolve("./target/idl/referral_system.json")
+      const idlPath = path.resolve(
+        "./target/idl/referral_system.json"
+      )
       if (!fs.existsSync(idlPath)) {
         console.error(`❌ IDL não encontrado em: ${idlPath}`)
-        console.error("Execute 'anchor build' primeiro para gerar o IDL")
+        console.error(
+          "Execute 'anchor build' primeiro para gerar o IDL"
+        )
         return
       }
-      
+
       const idlString = fs.readFileSync(idlPath, "utf8")
       idl = JSON.parse(idlString)
       console.log("✅ IDL carregado com sucesso")
-      
+      console.dir(idl, { depth: null, colors: true })
       // Verificar se o IDL tem a estrutura correta
       if (!idl.name || !idl.instructions) {
         console.error("❌ IDL inválido - estrutura incorreta")
         return
       }
-      
+
       console.log(`📋 Programa: ${idl.name}`)
       console.log(`📋 Versão: ${idl.version || "não especificada"}`)
-      console.log(`📋 Total de instruções: ${idl.instructions.length}`)
-      
+      console.log(
+        `📋 Total de instruções: ${idl.instructions.length}`
+      )
     } catch (e) {
       console.error(`❌ Erro ao carregar IDL: ${e.message}`)
       return
@@ -256,13 +262,16 @@ async function main() {
         "🏦 MULTISIG TREASURY: " + MULTISIG_TREASURY.toString()
       )
       console.log("🔑 PDA SOL VAULT: " + programSolVault.toString())
-      
+
       console.log("\n🔥 INFORMAÇÕES DO SISTEMA SWAP AND BURN:")
-      console.log(`🔥 O sistema agora faz swap de SOL para DONUT e queima 100% dos tokens`)
+      console.log(
+        `🔥 O sistema agora faz swap de SOL para DONUT e queima 100% dos tokens`
+      )
       console.log(`🔥 Slot 1: Swap and Burn`)
       console.log(`🔥 Slot 2: Reserva SOL para o referrer`)
-      console.log(`🔥 Slot 3: Paga SOL reservado e processa recursividade`)
-      
+      console.log(
+        `🔥 Slot 3: Paga SOL reservado e processa recursividade`
+      )
     } catch (error) {
       console.error(
         "❌ ERRO AO INICIALIZAR O ESTADO DA MATRIZ:",

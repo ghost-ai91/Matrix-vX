@@ -15,7 +15,7 @@ const idl = require("./target/idl/referral_system.json")
 
 // Configurações principais
 const PROGRAM_ID = new PublicKey(
-  "6XoW7rrA651gNMXmMXtu9GqBRSSCgh41B6YCGzPd9d3h"
+  "6VcvQ6GJawGCo2fVAsze4YXNK2agJErh88hRfpfDDWzd"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
@@ -120,8 +120,9 @@ async function testAddressLookupTables() {
     const { blockhash } = await pg.connection.getLatestBlockhash()
     createTableTx.recentBlockhash = blockhash
 
-    const signedCreateTx =
-      await pg.wallet.signTransaction(createTableTx)
+    const signedCreateTx = await pg.wallet.signTransaction(
+      createTableTx
+    )
     const createTxId = await pg.connection.sendRawTransaction(
       signedCreateTx.serialize()
     )
@@ -141,13 +142,13 @@ async function testAddressLookupTables() {
     const addressesToAdd = [
       // Endereços do programa e tokens
       new web3.PublicKey(
-        "CoRsyf6xCdgfKp64dG5oEKgRZLn5ckrux5YyCLoQ9rk4"
+        "6VcvQ6GJawGCo2fVAsze4YXNK2agJErh88hRfpfDDWzd"
       ), // MATRIX_PROGRAM_ID
       new web3.PublicKey(
         "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
       ), // TOKEN_MINT
       new web3.PublicKey(
-        "DQh7cmuBAHDyYFhq6ntY56JGbiwMKjb5QQoNT732FKzi"
+        "9QrxUustVomRJ5uY5MLCFXHwAivHw9BqxzEbPAaVFPeK"
       ), // STATE_ADDRESS
 
       // Endereços da Pool Meteora
@@ -169,7 +170,6 @@ async function testAddressLookupTables() {
       new web3.PublicKey(
         "4ndfcH16GKY76bzDkKfyVwHMoF8oY75KES2VaAhUYksN"
       ), // A_VAULT
-
 
       // Endereços do Vault B (SOL)
       new web3.PublicKey(
@@ -233,8 +233,9 @@ async function testAddressLookupTables() {
       await pg.connection.getLatestBlockhash()
     extendTableTx.recentBlockhash = extendBlockhash
 
-    const signedExtendTx =
-      await pg.wallet.signTransaction(extendTableTx)
+    const signedExtendTx = await pg.wallet.signTransaction(
+      extendTableTx
+    )
     const extendTxId = await pg.connection.sendRawTransaction(
       signedExtendTx.serialize()
     )
