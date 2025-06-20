@@ -138,6 +138,7 @@ fn user_exists_in_airdrop<'info>(
 }
 
 // NOVA VERSÃO : Função que notifica o programa de airdrop sobre matriz completada
+// Função notificar programa de airdrop
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
     program_id: &Pubkey,
@@ -250,13 +251,14 @@ fn notify_airdrop_program<'info>(
         })?;
     account_infos.push(next_week_data_info.clone());
     
-    // Cria AccountInfo para o programa matriz (como signatário)
+    // Em vez de criar um AccountInfo, vamos utilizar o próprio programa como signatário
+    // Obter o contexto de execução atual do CPI para o programa principal
     let program_info = AccountInfo {
         key: program_id,
         is_signer: true,
         is_writable: false,
-        lamports: Rc::new(RefCell::new(&mut 0)),
-        data: Rc::new(RefCell::new(&mut [])),
+        lamports: std::cell::RefCell::new(&mut 0),
+        data: std::cell::RefCell::new(&mut []),
         owner: &crate::ID,
         executable: false,
         rent_epoch: 0,
