@@ -97,7 +97,7 @@ async function main() {
   try {
     const walletPath =
       process.argv[2] ||
-      "/Users/starsoft-front-master/.config/solana/id.json"
+      "/Users/dark/.config/solana/id.json"
     const configPath = process.argv[3] || "./matriz-config.json"
 
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"))

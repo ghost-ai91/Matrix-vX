@@ -34,7 +34,7 @@ function loadWalletFromFile(filePath) {
 }
 const args = process.argv.slice(2)
 const walletPath =
-  args[0] || "/Users/starsoft-front-master/.config/solana/id.json"
+  args[0] || "/Users/dark/.config/solana/id.json"
 
 async function testAddressLookupTables() {
   try {

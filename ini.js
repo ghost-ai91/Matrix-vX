@@ -14,7 +14,7 @@ const path = require("path")
 // Receber parâmetros da linha de comando
 const args = process.argv.slice(2)
 const walletPath =
-  args[0] || "/Users/starsoft-front-master/.config/solana/id.json"
+  args[0] || "/Users/dark/.config/solana/id.json"
 const configOutputPath = args[1] || "./matriz-config.json"
 
 // Configurações principais - ATUALIZE COM SEU PROGRAM ID CORRETO
