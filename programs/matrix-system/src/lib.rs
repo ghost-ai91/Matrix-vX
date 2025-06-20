@@ -3,27 +3,26 @@ use anchor_lang::solana_program::{self, clock::Clock};
 use anchor_spl::token::{self, Token};
 use anchor_spl::associated_token::AssociatedToken;
 use chainlink_solana as chainlink;
-use solana_program::instruction::AccountMeta;
-use solana_program::program::invoke;
 #[cfg(not(feature = "no-entrypoint"))]
-// use {solana_security_txt::security_txt};
+use {solana_security_txt::security_txt};
+
 
 declare_id!("273d3yYAozJkMn2qT8afudNiVSF4rpP3zUCKwfw5tJPo");
 
-// #[cfg(not(feature = "no-entrypoint"))]
-// security_txt! {
-//     name: "Referral Matrix System",
-//     project_url: "https://matrix.matrix",
-//     contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
-//     policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
-//     preferred_languages: "en",
-//     source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
-//     source_revision: env!("GITHUB_SHA", "unknown-revision"),
-//     source_release: env!("PROGRAM_VERSION", "unknown-version"),
-//     encryption: "",
-//     auditors: "",
-//     acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
-// }
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Referral Matrix System",
+    project_url: "https://matrix.matrix",
+    contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
+    policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
+    preferred_languages: "en",
+    source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
+    source_revision: env!("GITHUB_SHA", "unknown-revision"),
+    source_release: env!("PROGRAM_VERSION", "unknown-version"),
+    encryption: "",
+    auditors: "",
+    acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
+}
 
 // Minimum deposit amount in USD (10 dollars in base units - 8 decimals)
 const MINIMUM_USD_DEPOSIT: u64 = 10_00000000; // 10 USD with 8 decimals (Chainlink format)
@@ -81,302 +80,9 @@ pub mod verified_addresses {
 pub mod admin_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva");
+    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
 
-    pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva");
-}
-
-//AirDrop
-pub mod airdrop_addresses {
-    use solana_program::pubkey::Pubkey;
-
-    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("BLCwTa5k6YB5oDqLDFnSYiNabhXos1vAKrUTRMufZDXK");
-}
-
-// Constants for the airdrop program
-static AIRDROP_PROGRAM_ID: Pubkey = airdrop_addresses::AIRDROP_ACCOUNT;
-
-// Discriminador para a instrução notify_matrix_completion
-const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR: [u8; 8] = [88, 30, 2, 65, 55, 218, 137, 194];
-
-// REMOVIDO: Não usamos mais os discriminadores de register_matrix_*
-
-// Função para verificar se o usuário existe no programa de airdrop
-fn user_exists_in_airdrop<'info>(
-    remaining_accounts: &[AccountInfo<'info>], 
-    user_wallet: &Pubkey
-) -> bool {
-    // Deriva a PDA do usuário no programa de airdrop
-    msg!("Verificando se o usuário existe no programa de airdrop: {}", user_wallet);
-    let seeds = &[b"user_account", user_wallet.as_ref()];
-    let (user_pda, _) = Pubkey::find_program_address(seeds, &AIRDROP_PROGRAM_ID);
-    msg!("Seeds: {:?}", seeds);
-    msg!("User PDA: {}", user_pda);
-    
-    // Busca nos remaining_accounts pela PDA do usuário
-    for account_info in remaining_accounts {
-        if account_info.key() == user_pda {
-            msg!("Conta encontrada: {}", account_info.key());
-            // Verifica se a conta existe, pertence ao programa de airdrop e tem dados
-            if account_info.owner == &AIRDROP_PROGRAM_ID && 
-               account_info.lamports() > 0 && 
-               !account_info.data_is_empty() {
-                return true;
-            }
-            
-            // A conta foi encontrada mas não está inicializada corretamente
-            msg!("A conta do usuário foi encontrada mas não está inicializada corretamente");
-            return false;
-        }
-    }
-    
-    // PDA do usuário não foi encontrada, assumindo que o usuário não existe
-    msg!("PDA do usuário não encontrada, assumindo que o usuário não existe");
-    false
-}
-
-fn notify_airdrop_program<'info>(
-    referrer_wallet: &Pubkey,
-    program_id: &Pubkey,
-    remaining_accounts: &[AccountInfo<'info>],
-    system_program: &AccountInfo<'info>,
-    user_wallet: &AccountInfo<'info>,
-) -> Result<()> {
-    use solana_program::instruction::Instruction;
-
-    msg!("🔍 [MATRIX] === INÍCIO notify_airdrop_program ===");
-    msg!("📋 [MATRIX] Parâmetros recebidos:");
-    msg!("  - referrer_wallet: {}", referrer_wallet);
-    msg!("  - program_id: {}", program_id);
-    msg!("  - system_program: {}", system_program.key());
-    msg!("  - user_wallet: {}", user_wallet.key());
-    msg!("  - user_wallet is_signer: {}", user_wallet.is_signer);
-    msg!("  - user_wallet is_writable: {}", user_wallet.is_writable);
-    msg!("  - user_wallet owner: {}", user_wallet.owner);
-    msg!("  - user_wallet lamports: {}", user_wallet.lamports());
-    
-    msg!("📋 [MATRIX] Remaining accounts count: {}", remaining_accounts.len());
-    for (i, acc) in remaining_accounts.iter().enumerate() {
-        msg!("  [{}] {} (owner: {}, writable: {}, signer: {})", 
-            i, 
-            acc.key(), 
-            acc.owner,
-            acc.is_writable,
-            acc.is_signer
-        );
-    }
-    
-    // Verificar se o usuário existe no programa de airdrop
-    msg!("🔍 [MATRIX] Verificando se referrer existe no airdrop...");
-    if !user_exists_in_airdrop(remaining_accounts, referrer_wallet) {
-        msg!("❌ [MATRIX] Referrer não registrado no airdrop");
-        return Err(error!(ErrorCode::UserNotRegisteredInAirdrop));
-    }
-    msg!("✅ [MATRIX] Referrer existe no airdrop");
-    
-    // 1. Derivar as PDAs necessárias
-    msg!("🔍 [MATRIX] Derivando PDAs...");
-    let state_seeds = &[b"program_state".as_ref()];
-    let (program_state_pda, _) = Pubkey::find_program_address(state_seeds, &AIRDROP_PROGRAM_ID);
-    msg!("  - program_state_pda: {}", program_state_pda);
-    
-    let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
-    let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
-    msg!("  - user_account_pda: {}", user_account_pda);
-    
-    // 2. Encontrar contas nos remaining_accounts
-    msg!("🔍 [MATRIX] Procurando contas nos remaining_accounts...");
-    
-    let program_state_account = remaining_accounts.iter()
-        .find(|a| a.key() == program_state_pda)
-        .ok_or_else(|| {
-            msg!("❌ [MATRIX] program_state_account não encontrado!");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    msg!("✅ [MATRIX] program_state_account encontrado");
-    
-    // 3. Obter semana atual
-    msg!("🔍 [MATRIX] Lendo semana atual...");
-    let data_borrow = program_state_account.data.borrow();
-    if data_borrow.len() < 73 {
-        msg!("❌ [MATRIX] program_state data muito pequeno: {} bytes", data_borrow.len());
-        return Err(error!(ErrorCode::MissingUplineAccount));
-    }
-    let current_week = data_borrow[72];
-    drop(data_borrow); // Liberar o borrow imediatamente
-    msg!("✅ [MATRIX] Semana atual: {}", current_week);
-    
-    // 4. Derivar PDAs das semanas
-    msg!("🔍 [MATRIX] Derivando PDAs das semanas...");
-    let week_bytes = current_week.to_le_bytes();
-    let current_week_data_seeds = &[b"weekly_data".as_ref(), &week_bytes];
-    let (current_week_data_pda, _) = Pubkey::find_program_address(current_week_data_seeds, &AIRDROP_PROGRAM_ID);
-    msg!("  - current_week_data_pda: {}", current_week_data_pda);
-    
-    let next_week = current_week + 1;
-    let next_week_bytes = next_week.to_le_bytes();
-    let next_week_data_seeds = &[b"weekly_data".as_ref(), &next_week_bytes];
-    let (next_week_data_pda, _) = Pubkey::find_program_address(next_week_data_seeds, &AIRDROP_PROGRAM_ID);
-    msg!("  - next_week_data_pda: {}", next_week_data_pda);
-    
-    // 5. Verificar se contas existem
-    msg!("🔍 [MATRIX] Procurando contas específicas...");
-    
-    let referrer_wallet_info = remaining_accounts.iter()
-        .find(|a| a.key() == *referrer_wallet)
-        .ok_or_else(|| {
-            msg!("❌ [MATRIX] referrer_wallet_info não encontrado!");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    msg!("✅ [MATRIX] referrer_wallet_info encontrado");
-    msg!("  - referrer_wallet_info owner: {}", referrer_wallet_info.owner);
-    msg!("  - referrer_wallet_info is_writable: {}", referrer_wallet_info.is_writable);
-    
-    let user_account_info = remaining_accounts.iter()
-        .find(|a| a.key() == user_account_pda)
-        .ok_or_else(|| {
-            msg!("❌ [MATRIX] user_account_info não encontrado!");
-            error!(ErrorCode::UserNotRegisteredInAirdrop)
-        })?;
-    msg!("✅ [MATRIX] user_account_info encontrado");
-    
-    let current_week_data_info = remaining_accounts.iter()
-        .find(|a| a.key() == current_week_data_pda)
-        .ok_or_else(|| {
-            msg!("❌ [MATRIX] current_week_data_info não encontrado!");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    msg!("✅ [MATRIX] current_week_data_info encontrado");
-    
-    let next_week_data_info = remaining_accounts.iter()
-        .find(|a| a.key() == next_week_data_pda)
-        .ok_or_else(|| {
-            msg!("❌ [MATRIX] next_week_data_info não encontrado!");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    msg!("✅ [MATRIX] next_week_data_info encontrado");
-    
-    // 6. Procurar o programa matrix nos remaining_accounts
-    msg!("🔍 [MATRIX] Procurando matrix program info...");
-    
-    let matrix_program_info = remaining_accounts.iter()
-        .find(|a| a.key() == *program_id)
-        .ok_or_else(|| {
-            msg!("❌ [MATRIX] Matrix program não encontrado nos remaining_accounts!");
-            msg!("     O cliente deve incluir o programa matrix nos remaining_accounts");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    msg!("✅ [MATRIX] Matrix program encontrado nos remaining_accounts");
-    
-
-    // 7. Criar instrução
-msg!("🔍 [MATRIX] Criando instrução CPI...");
-msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE LOG
-
-
-    // 7. Criar instrução
-    msg!("🔍 [MATRIX] Criando instrução CPI...");
-    let ix = Instruction {
-        program_id: AIRDROP_PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(program_state_pda, false),
-            AccountMeta::new(*referrer_wallet, false),
-            AccountMeta::new(user_account_pda, false),
-            AccountMeta::new(current_week_data_pda, false),
-            AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), false),
-            AccountMeta::new(*program_id, false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
-        ],
-        data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
-    };
-    
-    msg!("📋 [MATRIX] Instrução criada com contas:");
-    for (i, acc) in ix.accounts.iter().enumerate() {
-        msg!("  [{}] {} (signer: {}, writable: {})", i, acc.pubkey, acc.is_signer, acc.is_writable);
-    }
-    
-    // 8. Preparar contas para CPI
-    msg!("🔍 [MATRIX] Preparando account_infos para CPI...");
-    
-    let account_infos = vec![
-        program_state_account.clone(),
-        referrer_wallet_info.clone(),
-        user_account_info.clone(),
-        current_week_data_info.clone(),
-        next_week_data_info.clone(),
-        user_wallet.clone(),
-        matrix_program_info.clone(),  // Usar a conta encontrada
-        system_program.clone(),
-    ];
-    
-    msg!("📋 [MATRIX] Account infos preparados:");
-    for (i, acc) in account_infos.iter().enumerate() {
-        msg!("  [{}] {} (owner: {})", i, acc.key(), acc.owner);
-    }
-    
-    // Debug detalhado
-    msg!("🔍 [MATRIX] Debug detalhado das contas:");
-    msg!("  - user_wallet key: {}", user_wallet.key());
-    msg!("  - user_wallet data_len: {}", user_wallet.data_len());
-    msg!("  - user_wallet executable: {}", user_wallet.executable);
-    msg!("  - user_wallet rent_epoch: {}", user_wallet.rent_epoch);
-    
-    // Verificar duplicatas
-    use std::collections::HashSet;
-    let mut account_keys = HashSet::new();
-    for (i, acc) in account_infos.iter().enumerate() {
-        if !account_keys.insert(acc.key()) {
-            msg!("⚠️ [MATRIX] AVISO: Conta duplicada detectada na posição {}: {}", i, acc.key());
-        }
-    }
-    
-    // 9. Executar CPI
-    msg!("🚀 [MATRIX] Executando CPI para programa de airdrop...");
-    msg!("  - Target program: {}", AIRDROP_PROGRAM_ID);
-    
-    invoke(
-        &ix,
-        &account_infos
-    ).map_err(|e| {
-        msg!("❌ [MATRIX] CPI falhou!");
-        msg!("  - Erro: {:?}", e);
-        error!(ErrorCode::ReferrerPaymentFailed)
-    })?;
-    
-    msg!("✅ [MATRIX] CPI executado com sucesso!");
-    msg!("🔍 [MATRIX] === FIM notify_airdrop_program ===");
-    Ok(())
-}
-
-#[derive(Accounts)]
-pub struct MatrixCompletion<'info> {
-    #[account(mut)]
-    pub state: Box<Account<'info, ProgramState>>,
-    
-    #[account(mut)]
-    pub referrer_wallet: Signer<'info>,
-    
-    #[account(
-        mut,
-        seeds = [b"user_account", referrer_wallet.key().as_ref()],
-        bump,
-        constraint = referrer.owner_wallet == referrer_wallet.key() @ ErrorCode::InvalidAccountOwner
-    )]
-    pub referrer: Box<Account<'info, UserAccount>>,
-    
-    // NEW: User account being registered
-    #[account(mut)]
-    pub user: Signer<'info>,
-    
-    // NEW: Airdrop program accounts needed for CPI (will be passed via remaining_accounts)
-    // - program_state PDA from airdrop program
-    // - user_account PDA from airdrop program  
-    // - current_week_data PDA from airdrop program
-    // - next_week_data PDA from airdrop program
-    
-    // Required programs
-    pub system_program: Program<'info, System>,
+    pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
 }
 
 // Program state structure
@@ -390,23 +96,6 @@ pub struct ProgramState {
 
 impl ProgramState {
     pub const SIZE: usize = 32 + 32 + 4 + 4; // owner + multisig_treasury + next_upline_id + next_chain_id
-}
-
-// Separate struct to deserialize the airdrop program's state
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct AirdropProgramState {
-    pub admin: Pubkey,                 // Authorized admin
-    pub donut_token_mint: Pubkey,      // Mint of the DONUT token
-    pub current_week: u8,              // Current week (1-36)
-    pub matrix_program_id: Pubkey,     // ID of the matrix program
-    pub start_timestamp: i64,          // Start timestamp of the program
-    pub total_matrices_completed: u64, // Total matrices completed in the program
-    pub matrices_by_week: [u64; 36],   // Total matrices by week
-    pub total_users: u64,              // Total registered users
-    pub token_vault: Pubkey,           // PDA of the token vault
-    pub token_vault_bump: u8,          // Bump of the PDA of the token vault
-    pub initialized: bool,             // Flag to prevent reinitialization
-    pub vault_created: bool,           // Flag to indicate if the vault was created
 }
 
 // Structure to store complete information for each upline
@@ -453,7 +142,7 @@ impl UserAccount {
                            8;  // reserved_sol
 }
 
-// Error codes - ADDING NEW ERROR CODES
+// Error codes - ADICIONANDO NOVOS CÓDIGOS DE ERRO
 #[error_code]
 pub enum ErrorCode {
     #[msg("Referrer account is not registered")]
@@ -467,9 +156,6 @@ pub enum ErrorCode {
 
     #[msg("Slot account not owned by program")]
     InvalidSlotOwner,
-
-    #[msg("Invalid account owner")]
-    InvalidAccountOwner,
 
     #[msg("Slot account not registered")]
     SlotNotRegistered,
@@ -540,15 +226,12 @@ pub enum ErrorCode {
     #[msg("Meteora pool calculation overflow")]
     MeteoraCalculationOverflow,
     
+    // NOVOS ERROS ADICIONADOS
     #[msg("Deposit was not allocated - critical error")]
     UnusedDepositDetected,
     
     #[msg("Non-base user must provide uplines for slot 3")]
     UplineRequiredForNonBase,
-    
-    // NOVO ERRO
-    #[msg("User not registered in airdrop program")]
-    UserNotRegisteredInAirdrop,
 }
 
 // Event structure for slot filling
@@ -942,9 +625,9 @@ fn calculate_swap_amount_out<'info>(
     
     let result = donut_tokens as u64;
     
-    // Apply 99% slippage tolerance (accept only 1% of the expected)
+    // Apply 99% slippage tolerance (aceita receber apenas 1% do esperado)
     let minimum_out = result
-        .checked_mul(1)  // 1% of the expected value
+        .checked_mul(1)  // 1% do valor esperado
         .and_then(|n| n.checked_div(100))
         .ok_or(error!(ErrorCode::MeteoraCalculationOverflow))?;
     
@@ -1156,25 +839,15 @@ fn process_swap_and_burn<'info>(
 /// - bool: indicates if the matrix was completed
 /// - Pubkey: referrer key for use in recursion
 fn process_referrer_chain<'info>(
-    user_key: &Pubkey,
-    referrer: &mut Account<'_, UserAccount>,
-    next_chain_id: u32,
-    referrer_wallet: &Pubkey,
-    program_id: &Pubkey,
-    remaining_accounts: &[AccountInfo<'info>],
-    system_program: &AccountInfo<'info>,
-    user_wallet: &AccountInfo<'info>,  // ADICIONAR ESTE PARÂMETRO
- ) -> Result<(bool, Pubkey)> {
-   msg!("🔄 Processing referrer chain for user: {}", user_key);
-   msg!("👤 Referrer: {}", referrer.key());
-   
+   user_key: &Pubkey,
+   referrer: &mut Account<'_, UserAccount>,
+   next_chain_id: u32,
+) -> Result<(bool, Pubkey)> {
    let slot_idx = referrer.chain.filled_slots as usize;
    if slot_idx >= 3 {
-       msg!("⚠️ Referrer matrix already full, cannot add user");
        return Ok((false, referrer.key())); 
    }
 
-   msg!("📍 Adding user to slot {}", slot_idx);
    referrer.chain.slots[slot_idx] = Some(*user_key);
 
    // Emit slot filled event
@@ -1186,49 +859,16 @@ fn process_referrer_chain<'info>(
    });
 
    referrer.chain.filled_slots += 1;
-   msg!("📊 Matrix slots filled: {}/3", referrer.chain.filled_slots);
 
    if referrer.chain.filled_slots == 3 {
-       msg!("🎉 Matrix completed! Notificando programa de airdrop...");
-       
-       // Chamar a função notify_airdrop_program simplificada
-       notify_airdrop_program(
-        referrer_wallet,
-        program_id,
-        remaining_accounts,
-        system_program,
-        user_wallet,  // NOVO: passar user_wallet
-    )?;
-       
-       msg!("🔄 Resetting matrix with new ID: {}", next_chain_id);
        referrer.chain.id = next_chain_id;
        referrer.chain.slots = [None, None, None];
        referrer.chain.filled_slots = 0;
-       
-       msg!("✅ Matrix completion process finished");
+
        return Ok((true, referrer.key()));
    }
 
-   msg!("📈 Matrix in progress, {} more slots needed", 3 - referrer.chain.filled_slots);
    Ok((false, referrer.key()))
-}
-
-fn get_matrix_account_info<'a, 'b, 'c, 'info>(ctx: &Context<'a, 'b, 'c, 'info, RegisterWithSolDeposit<'info>>) -> Result<(AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>, AccountInfo<'info>)> {
-    let pool_info = ctx.accounts.pool.to_account_info();
-    let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
-    let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
-    let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
-    let b_vault_info = ctx.accounts.b_vault.to_account_info();
-    let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
-    let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
-    let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
-    let token_mint_info = ctx.accounts.token_mint.to_account_info();
-    let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
-    let vault_program_info = ctx.accounts.vault_program.to_account_info();
-    let token_program_info = ctx.accounts.token_program.to_account_info();
-    let amm_program_info = ctx.accounts.amm_program.to_account_info();
-    
-    Ok((pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info))
 }
 
 // Accounts for initialize instruction
@@ -1416,17 +1056,6 @@ pub struct RegisterWithSolDeposit<'info> {
     pub system_program: Program<'info, System>,
     pub associated_token_program: Program<'info, AssociatedToken>,
     pub rent: Sysvar<'info, Rent>,
-    
-    // remaining_accounts should include for CPI when needed:
-    // [0..3] - Vault A accounts (a_vault, a_vault_lp, a_vault_lp_mint, a_token_vault)
-    // [4..5] - Chainlink accounts (chainlink_feed, chainlink_program)  
-    // [6..] - Uplines for slot 3 processing (pairs of account_pda, wallet_account)
-    //
-    // For CPI to airdrop program when matrix completes, remaining_accounts may also include:
-    // - Airdrop program state PDA
-    // - User account PDA in airdrop program (deve existir previamente)
-    // - Current week data PDA in airdrop program
-    // - Next week data PDA in airdrop program
 }
 
 // HELPER FUNCTIONS TO REDUCE STACK USAGE
@@ -1658,23 +1287,10 @@ pub mod referral_system {
         ctx: Context<'a, 'b, 'c, 'info, RegisterWithSolDeposit<'info>>, 
         deposit_amount: u64
     ) -> Result<()> {
-        msg!("🚀 Starting user registration with SOL deposit");
-        msg!("👤 User wallet: {}", ctx.accounts.user_wallet.key());
-        msg!("👤 Referrer wallet: {}", ctx.accounts.referrer_wallet.key());
-        msg!("💰 Deposit amount: {} lamports", deposit_amount);
-        msg!("📊 Remaining accounts count: {}", ctx.remaining_accounts.len());
-        msg!("🎯 Matrix program ID: {}", ctx.program_id);
-        msg!("🎯 Airdrop program ID: {}", AIRDROP_PROGRAM_ID);
-        
         // Check if referrer is registered
         if !ctx.accounts.referrer.is_registered {
-            msg!("❌ Referrer is not registered");
             return Err(error!(ErrorCode::ReferrerNotRegistered));
         }
-        
-        msg!("✅ Referrer is registered, chain ID: {}, filled slots: {}", 
-             ctx.accounts.referrer.chain.id, 
-             ctx.accounts.referrer.chain.filled_slots);
 
         // Check if we have vault A accounts and Chainlink accounts in remaining_accounts
         if ctx.remaining_accounts.len() < VAULT_A_ACCOUNTS_COUNT + 2 { // +2 for Chainlink accounts
@@ -1780,17 +1396,13 @@ pub mod referral_system {
         // OPTIMIZATION - Reduce capacity to current size
         new_upline.shrink_to_fit();
 
-        // Get upline ID from global counter and update state in a limited scope
-        let (upline_id, chain_id) = {
-            let state = &mut ctx.accounts.state;
-            let upline_id = state.next_upline_id;
-            let chain_id = state.next_chain_id;
+        // Get upline ID from global counter
+        let state = &mut ctx.accounts.state;
+        let upline_id = state.next_upline_id;
+        let chain_id = state.next_chain_id;
 
-            state.next_upline_id += 1; // Increment for next user
-            state.next_chain_id += 1;
-            
-            (upline_id, chain_id)
-        }; // state borrow ends here
+        state.next_upline_id += 1; // Increment for next user
+        state.next_chain_id += 1;
 
         // Create new user data
         let user = &mut ctx.accounts.user;
@@ -1844,10 +1456,22 @@ pub mod referral_system {
           &[ctx.accounts.user_wsol_account.to_account_info()],
       ).map_err(|_| error!(ErrorCode::WrapSolFailed))?;
 
-      // Clone AccountInfo to avoid lifetime problems
-      let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+      // Clone AccountInfo para evitar problemas de lifetime
+      let pool_info = ctx.accounts.pool.to_account_info();
+      let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+      let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+      let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+      let b_vault_info = ctx.accounts.b_vault.to_account_info();
+      let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+      let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+      let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+      let token_mint_info = ctx.accounts.token_mint.to_account_info();
+      let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+      let vault_program_info = ctx.accounts.vault_program.to_account_info();
+      let token_program_info = ctx.accounts.token_program.to_account_info();
+      let amm_program_info = ctx.accounts.amm_program.to_account_info();
 
-      // Process swap and burn with cloned AccountInfo
+      // Process swap and burn com AccountInfo clonados
       process_swap_and_burn(
           &pool_info,
           &user_wallet_info,
@@ -1904,19 +1528,19 @@ pub mod referral_system {
 
  // LOGIC FOR SLOT 3: Pay referrer (SOL) and start recursion
 else if slot_idx == 2 {
-  // NEW VALIDATION: If not base, MUST have uplines
+  // NOVA VALIDAÇÃO: Se não é base, DEVE ter uplines
   if ctx.accounts.referrer.referrer.is_some() {
-      // Not base, MUST have uplines
+      // Não é base, DEVE ter uplines
       let upline_start_idx = VAULT_A_ACCOUNTS_COUNT + 2;
       if ctx.remaining_accounts.len() <= upline_start_idx {
-          msg!("❌ Error: Slot 3 of non-base user requires uplines!");
+          msg!("❌ Erro: Slot 3 de usuário não-base requer uplines!");
           return Err(error!(ErrorCode::UplineRequiredForNonBase));
       }
       
-      // Verify if there are at least 3 accounts (1 group)
+      // Verificar se tem pelo menos 3 contas (1 trio)
       let upline_accounts = &ctx.remaining_accounts[upline_start_idx..];
-      if upline_accounts.len() < 2 || upline_accounts.len() % 2 != 0 {
-          msg!("❌ Error: Invalid uplines - must be a multiple of 2");
+      if upline_accounts.len() < 3 || upline_accounts.len() % 3 != 0 {
+          msg!("❌ Erro: Uplines inválidas - deve ser múltiplo de 3");
           return Err(error!(ErrorCode::MissingUplineAccount));
       }
   }
@@ -1940,8 +1564,8 @@ else if slot_idx == 2 {
       ctx.accounts.referrer.reserved_sol = 0;
   }
   
-  // 2. ALWAYS wrap SOL to WSOL in slot 3
-  // This ensures we have WSOL for all processing
+  // 2. SEMPRE fazer wrap do SOL para WSOL no slot 3
+  // Isso garante que tenhamos WSOL para todo o processamento
   let transfer_ix = solana_program::system_instruction::transfer(
       &ctx.accounts.user_wallet.key(),
       &ctx.accounts.user_wsol_account.key(),
@@ -1972,51 +1596,51 @@ else if slot_idx == 2 {
 
   // Process the referrer's matrix
   let (chain_completed, upline_pubkey) = process_referrer_chain(
-    &ctx.accounts.user.key(),
-    &mut ctx.accounts.referrer,
-    ctx.accounts.state.next_chain_id,
-    &ctx.accounts.referrer_wallet.key(),
-    &ctx.program_id,
-    &ctx.remaining_accounts,
-    &ctx.accounts.system_program.to_account_info(),
-    &ctx.accounts.user_wallet.to_account_info(),  // NOVO: passar user_wallet
-)?;
+      &ctx.accounts.user.key(),
+      &mut ctx.accounts.referrer,
+      state.next_chain_id,
+  )?;
 
   // Add cleanup:
   force_memory_cleanup();
 
   // If the matrix was completed, increment the global ID for the next one
   if chain_completed {
-      let state = &mut ctx.accounts.state;
       state.next_chain_id += 1;
-      msg!("🔄 Matrix was completed, incremented next_chain_id to: {}", state.next_chain_id);
-  } else {
-      msg!("📈 Matrix in progress, not completed yet");
   }
 
   // If the referrer's matrix was completed, process recursion
   if chain_completed && slot_idx == 2 {
-      msg!("🎯 Processing slot 3 completion with recursion logic");
       let mut current_user_pubkey = upline_pubkey;
       let mut current_deposit = deposit_amount;
       let mut wsol_closed = false;
       let mut deposit_allocated = false; // NOVO: rastrear se depósito foi alocado
 
-      msg!("💰 Starting recursion with deposit: {} lamports", current_deposit);
-
       // Calculate remaining accounts offset - skip the vault A accounts and Chainlink accounts
       let upline_start_idx = VAULT_A_ACCOUNTS_COUNT + 2;
 
-      // Check if it's a base user
+      // Verificar se é usuário base
       let is_base_user = ctx.accounts.referrer.referrer.is_none();
       
       if is_base_user {
-          msg!("👤 Base user detected - executing swap and burn required");
+          msg!("👤 Usuário base detectado - executando swap and burn obrigatório");
           
-          // Base user ALWAYS does swap and burn in slot 3
+          // Base user SEMPRE faz swap and burn no slot 3
           if current_deposit > 0 {
               // Clone AccountInfo
-              let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+              let pool_info = ctx.accounts.pool.to_account_info();
+              let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+              let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+              let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+              let b_vault_info = ctx.accounts.b_vault.to_account_info();
+              let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+              let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+              let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+              let token_mint_info = ctx.accounts.token_mint.to_account_info();
+              let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+              let vault_program_info = ctx.accounts.vault_program.to_account_info();
+              let token_program_info = ctx.accounts.token_program.to_account_info();
+              let amm_program_info = ctx.accounts.amm_program.to_account_info();
               
               process_swap_and_burn(
                   &pool_info,
@@ -2039,44 +1663,44 @@ else if slot_idx == 2 {
                   current_deposit
               )?;
               
-              msg!("✅ Swap and burn executed for base user");
+              msg!("✅ Swap and burn executado para usuário base");
               deposit_allocated = true;
               current_deposit = 0;
           }
       } else {
-          // Not base - MUST process uplines
+          // Não é base - DEVE processar uplines
           if ctx.remaining_accounts.len() > upline_start_idx && current_deposit > 0 {
               let upline_accounts = &ctx.remaining_accounts[upline_start_idx..];
               
-              // OPTIMIZATION - Check if remaining upline accounts are multiples of 2
-              if upline_accounts.len() % 2 != 0 {
+              // OPTIMIZATION - Check if remaining upline accounts are multiples of 3
+              if upline_accounts.len() % 3 != 0 {
                   return Err(error!(ErrorCode::MissingUplineAccount));
               }
               
-              // Calculate number of pairs (PDA, wallet)
-              let pair_count = upline_accounts.len() / 2;
+              // Calculate number of trios (PDA, wallet, ATA)
+              let trio_count = upline_accounts.len() / 3;
               
               // OPTIMIZATION - Process in smaller batches to save memory
               const BATCH_SIZE: usize = 1; 
               
               // Calculate number of batches (division with rounding up)
-              let batch_count = (pair_count + BATCH_SIZE - 1) / BATCH_SIZE;
+              let batch_count = (trio_count + BATCH_SIZE - 1) / BATCH_SIZE;
               
               // Process each batch
               for batch_idx in 0..batch_count {
                   // Calculate batch range
-                  let start_pair = batch_idx * BATCH_SIZE;
-                  let end_pair = std::cmp::min(start_pair + BATCH_SIZE, pair_count);
+                  let start_trio = batch_idx * BATCH_SIZE;
+                  let end_trio = std::cmp::min(start_trio + BATCH_SIZE, trio_count);
                   
                   // Iterate through trios in current batch
-                  for pair_index in start_pair..end_pair {
+                  for trio_index in start_trio..end_trio {
                       // Check maximum depth and if deposit is remaining
-                      if pair_index >= MAX_UPLINE_DEPTH || current_deposit == 0 {
+                      if trio_index >= MAX_UPLINE_DEPTH || current_deposit == 0 {
                           break;
                       }
 
-                      // Calculate base index for each pair
-                      let base_idx = pair_index * 2;
+                      // Calculate base index for each trio
+                      let base_idx = trio_index * 3;
                       
                       // Get current upline information
                       let upline_info = &upline_accounts[base_idx];       // Account PDA
@@ -2136,10 +1760,22 @@ else if slot_idx == 2 {
                           // SLOT 1: Swap and burn tokens
                           // Use the WSOL account that was kept open if not already closed
                           if !wsol_closed {
-                              // Get matrix account info
-                              let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+                              // Clone AccountInfo para evitar problemas de lifetime
+                              let pool_info = ctx.accounts.pool.to_account_info();
+                              let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+                              let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+                              let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+                              let b_vault_info = ctx.accounts.b_vault.to_account_info();
+                              let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+                              let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+                              let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+                              let token_mint_info = ctx.accounts.token_mint.to_account_info();
+                              let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+                              let vault_program_info = ctx.accounts.vault_program.to_account_info();
+                              let token_program_info = ctx.accounts.token_program.to_account_info();
+                              let amm_program_info = ctx.accounts.amm_program.to_account_info();
 
-                              // Instead of making a deposit in the pool, we do swap and burn of the tokens
+                              // Em vez de fazer depósito na pool, fazemos swap e burn dos tokens
                               process_swap_and_burn(
                                   &pool_info,
                                   &user_wallet_info,
@@ -2249,18 +1885,7 @@ else if slot_idx == 2 {
                       
                       // Process matrix completion only if necessary
                       if chain_completed {
-// Notificar o programa de airdrop sobre a matriz completada
-notify_airdrop_program(
-    &upline_wallet.key(),
-    &ctx.program_id,
-    ctx.remaining_accounts,
-    &ctx.accounts.system_program.to_account_info(),
-    &ctx.accounts.user_wallet.to_account_info()  // NOVO: adicionar user_wallet
-)?;
-                          
-                          
                           // Get new ID for the reset matrix
-                          let state = &mut ctx.accounts.state;
                           let next_chain_id_value = state.next_chain_id;
                           state.next_chain_id += 1;
                           
@@ -2289,13 +1914,13 @@ notify_airdrop_program(
                           break;
                       }
                       
-                      // If allocated deposit, stop processing
+                      // Se depósito foi alocado, parar
                       if deposit_allocated {
                           break;
                       }
                       
                       // Check maximum depth after processing
-                      if pair_index >= MAX_UPLINE_DEPTH - 1 {
+                      if trio_index >= MAX_UPLINE_DEPTH - 1 {
                           break;
                       }
                   }
@@ -2306,12 +1931,12 @@ notify_airdrop_program(
                   }
               }
 
-              // CRITICAL: If all uplines were processed and deposit was not allocated, MUST do swap and burn
+              // CRÍTICO: Se processou todas uplines e não alocou, DEVE fazer swap and burn
               if !deposit_allocated && current_deposit > 0 {
-                  msg!("⚠️ All uplines processed without allocating deposit");
-                  msg!("💱 Executing swap and burn required");
+                  msg!("⚠️ Todas uplines processadas sem alocar depósito");
+                  msg!("💱 Executando swap and burn obrigatório");
                   
-                  // Reopen WSOL if necessary
+                  // Reabrir WSOL se necessário
                   if wsol_closed {
                       let transfer_ix = solana_program::system_instruction::transfer(
                           &ctx.accounts.user_wallet.key(),
@@ -2340,8 +1965,20 @@ notify_airdrop_program(
                       wsol_closed = false;
                   }
                   
-                  // Get matrix account info
-                  let (pool_info, user_wallet_info, user_wsol_account_info, user_donut_account_info, b_vault_info, b_token_vault_info, b_vault_lp_mint_info, b_vault_lp_info, token_mint_info, protocol_token_fee_info, vault_program_info, token_program_info, amm_program_info) = get_matrix_account_info(&ctx)?;
+                  // Clone AccountInfo para evitar problemas de lifetime
+                  let pool_info = ctx.accounts.pool.to_account_info();
+                  let user_wallet_info = ctx.accounts.user_wallet.to_account_info();
+                  let user_wsol_account_info = ctx.accounts.user_wsol_account.to_account_info();
+                  let user_donut_account_info = ctx.accounts.user_donut_account.to_account_info();
+                  let b_vault_info = ctx.accounts.b_vault.to_account_info();
+                  let b_token_vault_info = ctx.accounts.b_token_vault.to_account_info();
+                  let b_vault_lp_mint_info = ctx.accounts.b_vault_lp_mint.to_account_info();
+                  let b_vault_lp_info = ctx.accounts.b_vault_lp.to_account_info();
+                  let token_mint_info = ctx.accounts.token_mint.to_account_info();
+                  let protocol_token_fee_info = ctx.accounts.protocol_token_fee.to_account_info();
+                  let vault_program_info = ctx.accounts.vault_program.to_account_info();
+                  let token_program_info = ctx.accounts.token_program.to_account_info();
+                  let amm_program_info = ctx.accounts.amm_program.to_account_info();
                   
                   // Swap and burn tokens with the remaining deposit
                   process_swap_and_burn(
@@ -2367,23 +2004,22 @@ notify_airdrop_program(
                   
                   deposit_allocated = true;
                   current_deposit = 0;
-                  msg!("✅ Swap and burn executed after processing all uplines");
+                  msg!("✅ Swap and burn executado após processar todas uplines");
               }
           } else {
-              // Error: not base but no uplines
+              // Erro: não é base mas não tem uplines
               return Err(error!(ErrorCode::UplineRequiredForNonBase));
           }
       }
       
-      // FINAL SECURITY VALIDATION
+      // VALIDAÇÃO FINAL DE SEGURANÇA
       if current_deposit > 0 || !deposit_allocated {
-          msg!("❌ CRITICAL ERROR: Deposit was not allocated!");
+          msg!("❌ ERRO CRÍTICO: Depósito não foi alocado!");
           msg!("  current_deposit: {}", current_deposit);
           msg!("  deposit_allocated: {}", deposit_allocated);
           return Err(error!(ErrorCode::UnusedDepositDetected));
       }
       
-      msg!("✅ All deposits properly allocated and processed");
       // Close WSOL account if still open
       if !wsol_closed {
           let account_info = ctx.accounts.user_wsol_account.to_account_info();
@@ -2406,19 +2042,9 @@ notify_airdrop_program(
                   &close_ix,
                   &close_accounts,
               ).map_err(|_| error!(ErrorCode::UnwrapSolFailed))?;
-              
-              msg!("💼 Closed WSOL account successfully");
           }
       }
-  } else if slot_idx == 2 {
-      msg!("🎯 Slot 3 filled but recursion not triggered (no matrix completion)");
   }
-  
-  msg!("🎉 User registration completed successfully!");
-  msg!("👤 New user: {}", ctx.accounts.user.key());
-  msg!("👤 Referrer: {}", ctx.accounts.referrer.key());
-  msg!("💰 Deposit processed: {} lamports", deposit_amount);
-  msg!("📊 Matrix status - Chain completed: {}, Slot filled: {}", chain_completed, slot_idx);
   
   Ok(())
 }
