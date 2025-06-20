@@ -145,6 +145,13 @@ fn notify_airdrop_program<'info>(
     user_wallet: &AccountInfo<'info>,  // NOVO: adicionar user_wallet como parâmetro
 ) -> Result<()> {
     use solana_program::instruction::Instruction;
+
+        // No início da função notify_airdrop_program, adicione:
+    msg!("📋 Remaining accounts count: {}", remaining_accounts.len());
+    for (i, acc) in remaining_accounts.iter().enumerate() {
+        msg!("  [{}] {}", i, acc.key());
+    }
+    msg!("🔍 Procurando referrer_wallet: {}", referrer_wallet);
     
     msg!("🔍 Notificando programa de airdrop sobre matriz completada");
     msg!("👤 User wallet (payer): {}", user_wallet.key());
