@@ -99,7 +99,7 @@ pub mod airdrop_addresses {
 static AIRDROP_PROGRAM_ID: Pubkey = airdrop_addresses::AIRDROP_ACCOUNT;
 
 // Discriminador para a instrução notify_matrix_completion
-const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR: [u8; 8] = [55, 55, 55, 55, 55, 55, 55, 55]; // IMPORTANTE: Substituir pelo valor correto após compilar o programa de airdrop
+const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR: [u8; 8] = [88, 30, 2, 65, 55, 218, 137, 194];
 
 // REMOVIDO: Não usamos mais os discriminadores de register_matrix_*
 
