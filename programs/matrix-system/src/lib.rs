@@ -215,12 +215,6 @@ fn notify_airdrop_program<'info>(
             error!(ErrorCode::MissingUplineAccount)
         })?;
     
-    // Verificar se a carteira do referenciador é um signatário
-    if !referrer_wallet_info.is_signer {
-        msg!("⚠️ Aviso: Carteira do referenciador não é signatária na transação");
-        // Continuamos, mas é bom estar ciente disso
-    }
-    
     // 9. Coletar as contas necessárias na ordem correta
     let mut account_infos = Vec::new();
     
@@ -256,17 +250,16 @@ fn notify_airdrop_program<'info>(
         })?;
     account_infos.push(next_week_data_info.clone());
     
-    // Adiciona o próprio programa matriz como readonly
-    account_infos.push(AccountInfo::new(
-        &program_id,
-        false,
-        false,
-        &0,
-        &[],
-        &program_id,
-        false,
-        0,
-    ));
+    // CORREÇÃO: Adiciona o próprio programa matriz 
+    // Não é possível criar um AccountInfo do zero facilmente, 
+    // então vamos buscar alguma conta que pertence ao programa matriz
+    let matrix_program_info = remaining_accounts.iter()
+        .find(|a| a.owner == program_id)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Não foi possível encontrar uma conta do programa matriz");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    account_infos.push(matrix_program_info.clone());
     
     // Adiciona o programa do sistema
     account_infos.push(system_program.clone());
