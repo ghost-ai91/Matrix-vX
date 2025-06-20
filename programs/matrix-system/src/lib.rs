@@ -230,17 +230,17 @@ fn notify_airdrop_program<'info>(
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-    // 7. Preparar contas para a CPI
-    let account_infos = vec![
-        program_state_account.clone(),
-        referrer_wallet_info.clone(),
-        user_account_info.clone(),
-        current_week_data_info.clone(),
-        next_week_data_info.clone(),
-        user_wallet.clone(),         // NOVO: incluir user_wallet
-        system_program.clone(),        // Usar conta existente do programa
-        system_program.clone(),
-    ];
+// 7. Preparar contas para a CPI
+let account_infos = vec![
+    program_state_account.clone(),
+    referrer_wallet_info.clone(),
+    user_account_info.clone(),
+    current_week_data_info.clone(),
+    next_week_data_info.clone(),
+    user_wallet.clone(),
+    referrer_wallet_info.clone(),  // Usar referrer_wallet_info ao invés de system_program
+    system_program.clone(),
+];
     
     // 8. Executa a CPI
     msg!("🚀 Invocando programa de airdrop...");
