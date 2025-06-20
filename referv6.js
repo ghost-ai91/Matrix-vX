@@ -1,4 +1,4 @@
-// register-v6.js - Versão Final com Inclusão da Carteira do Referenciador e Pré-Criação da Próxima Semana
+// register-v6.js - Versão Final com Argumentos de Linha de Comando
 const { 
   Connection, 
   Keypair, 
@@ -8,14 +8,12 @@ const {
   ComputeBudgetProgram,
   TransactionInstruction,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY,
-  Transaction, // Adicionado para transação legada
+  SYSVAR_RENT_PUBKEY
 } = require('@solana/web3.js');
 const { AnchorProvider, Program, BN, Wallet, utils } = require('@coral-xyz/anchor');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const readline = require('readline');
 
 // Endereços verificados (igual ao contrato)
 const VERIFIED_ADDRESSES = {
@@ -59,19 +57,7 @@ const SYSTEM_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
 // Discriminador correto para a nova instrução notify_matrix_completion
-const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR = Buffer.from([37, 97, 96, 169, 254, 103, 83, 9]);
-
-// Discriminador para a instrução initialize_week no programa de airdrop
-const INITIALIZE_WEEK_DISCRIMINATOR = Buffer.from([83, 114, 214, 129, 9, 7, 76, 219]);
-
-// Função para criar interface de linha de comando
-function createInterface() {
-  return readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-}
-
+const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR = Buffer.from([88, 30, 2, 65, 55, 218, 137, 194]);
 // Função para dormir
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -379,188 +365,61 @@ async function prepareAirdropAccounts(connection, referrerAddress) {
   };
 }
 
-// Função para criar a conta da próxima semana no programa de airdrop
-async function createNextWeekAccount(connection, walletKeypair, airdropInfo) {
-  console.log("\n🔧 CRIANDO CONTA DA PRÓXIMA SEMANA MANUALMENTE...");
-  
-  const nextWeek = airdropInfo.currentWeek + 1;
-  console.log(`  📅 Criando conta para a semana ${nextWeek}`);
-  
-  // Obter blockhash recente
-  const { blockhash } = await connection.getLatestBlockhash('confirmed');
-  
-  // Criar instrução para inicializar a próxima semana
-  // Dados da instrução (8 bytes de discriminador + 1 byte para a semana)
-  const data = Buffer.alloc(9);
-  INITIALIZE_WEEK_DISCRIMINATOR.copy(data, 0);
-  data.writeUInt8(nextWeek, 8);
-  
-  // Criar a instrução manualmente
-  const initWeekIx = new TransactionInstruction({
-    programId: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
-    keys: [
-      { pubkey: airdropInfo.programStatePda, isSigner: false, isWritable: true },
-      { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
-      { pubkey: airdropInfo.nextWeekDataPda, isSigner: false, isWritable: true },
-      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-    ],
-    data: data,
-  });
-  
-  // Adicionar instrução de compute budget para garantir capacidade suficiente
-  const computeUnits = 200_000;
-  const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-    units: computeUnits
-  });
-  
-  // Criar uma transação legada para compatibilidade
-  const transaction = new Transaction()
-    .add(modifyComputeUnits)
-    .add(initWeekIx);
-  
-  transaction.recentBlockhash = blockhash;
-  transaction.feePayer = walletKeypair.publicKey;
-  
-  // Assinar a transação
-  transaction.sign(walletKeypair);
-  
-  try {
-    // Enviar transação
-    const txid = await connection.sendRawTransaction(transaction.serialize(), {
-      skipPreflight: true,
-      maxRetries: 3
-    });
-    
-    console.log(`  ✅ Transação para criar próxima semana enviada: ${txid}`);
-    console.log(`  🔍 Explorer: https://explorer.solana.com/tx/${txid}?cluster=devnet`);
-    
-    // Verificar confirmação
-    console.log(`  ⏳ Aguardando confirmação da criação da próxima semana...`);
-    const result = await checkSignatureStatus(connection, txid, 30000);
-    
-    if (result.confirmed) {
-      console.log(`  ✅ Conta da próxima semana criada com sucesso!`);
-      // Esperar um pouco para garantir que a rede esteja atualizada
-      await sleep(2000);
-      return true;
-    } else {
-      console.log(`  ❌ Falha ao criar conta da próxima semana: ${result.error}`);
-      return false;
-    }
-  } catch (error) {
-    console.error(`  ❌ Erro ao criar conta da próxima semana:`, error.message);
-    if (error.logs) {
-      console.log("\n  📋 LOGS DE ERRO:");
-      error.logs.forEach((log, i) => console.log(`  ${i}: ${log}`));
-    }
-    return false;
-  }
-}
-
-// Função para criar instrução de notificação de matriz completada
-function createNotifyMatrixCompletionInstruction(
-  referrerWallet,
-  programStatePda, 
-  userAccountPda, 
-  currentWeekDataPda, 
-  nextWeekDataPda,
-  matrixProgramId
-) {
-  // Criar a lista de contas
-  const accounts = [
-    { pubkey: programStatePda, isSigner: false, isWritable: true },
-    { pubkey: referrerWallet, isSigner: true, isWritable: true },
-    { pubkey: userAccountPda, isSigner: false, isWritable: true },
-    { pubkey: currentWeekDataPda, isSigner: false, isWritable: true },
-    { pubkey: nextWeekDataPda, isSigner: false, isWritable: true },
-    { pubkey: matrixProgramId, isSigner: false, isWritable: false },
-    { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
-  ];
-  
-  // Criar a instrução
-  return new TransactionInstruction({
-    programId: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
-    keys: accounts,
-    data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR
-  });
-}
-
 // Função principal
 async function main() {
-  console.log("\n🚀 REGISTER V6 - VERSÃO FINAL COM INCLUSÃO DA CARTEIRA DO REFERENCIADOR 🚀");
-  console.log("==========================================================================");
+  console.log("\n🚀 REGISTER V6 - VERSÃO COM ARGUMENTOS CLI 🚀");
+  console.log("===========================================");
   
-  const rl = createInterface();
+  // Processar argumentos da linha de comando
+  const args = process.argv.slice(2);
+  
+  if (args.length < 4) {
+    console.error("\n❌ ERRO: Argumentos insuficientes!");
+    console.log("\n📖 USO:");
+    console.log("node register-v6.js <carteira> <config> <referenciador> <alt>");
+    console.log("\n📋 EXEMPLO:");
+    console.log("node register-v6.js ./carteiras/carteira3.json ./matriz-config.json QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv 5EzjPd9ZKqHFSZ9d4rND3X3uwXSVxT65DSkerK6jHaw2");
+    console.log("\n💡 ARGUMENTOS:");
+    console.log("  carteira      - Caminho para o arquivo JSON da carteira");
+    console.log("  config        - Caminho para o arquivo de configuração");
+    console.log("  referenciador - Endereço público do referenciador");
+    console.log("  alt           - Endereço da Address Lookup Table");
+    console.log("\n📌 OPCIONAL:");
+    console.log("  Você pode adicionar um 5º argumento para o valor do depósito em SOL (padrão: 0.1)");
+    process.exit(1);
+  }
+  
+  const walletPath = args[0];
+  const configPath = args[1];
+  const referrerAddressStr = args[2];
+  const altAddress = args[3];
+  const depositAmountStr = args[4] || '0.1'; // Valor padrão: 0.1 SOL
+  
+  console.log("\n📋 CONFIGURAÇÃO:");
+  console.log(`  Carteira: ${walletPath}`);
+  console.log(`  Config: ${configPath}`);
+  console.log(`  Referenciador: ${referrerAddressStr}`);
+  console.log(`  ALT: ${altAddress}`);
+  console.log(`  Depósito: ${depositAmountStr} SOL`);
   
   try {
-    // Verificar qual carteira usar
-    const walletPath = await new Promise(resolve => {
-      rl.question('\nDigite o caminho da carteira (ou pressione Enter para usar a padrão): ', answer => {
-        resolve(answer.trim() || './carteiras/carteira1.json');
-      });
-    });
-    
-    // Verificar o ALT a ser usado
-    const altAddress = await new Promise(resolve => {
-      rl.question('\nDigite o endereço da ALT (Address Lookup Table): ', answer => {
-        resolve(answer.trim());
-      });
-    });
-    
-    if (!altAddress) {
-      console.error("❌ ERRO: Endereço da ALT é obrigatório!");
-      rl.close();
-      return;
-    }
-    
-    // Perguntar pelo endereço do referenciador
-    const referrerAddressStr = await new Promise(resolve => {
-      rl.question('\nDigite o endereço do referenciador: ', answer => {
-        resolve(answer.trim());
-      });
-    });
-    
-    if (!referrerAddressStr) {
-      console.error("❌ ERRO: Endereço do referenciador é obrigatório!");
-      rl.close();
-      return;
-    }
-    
     // Converter endereço do referenciador
     let referrerAddress;
     try {
       referrerAddress = new PublicKey(referrerAddressStr);
     } catch (e) {
-      console.error("❌ ERRO: Endereço do referenciador inválido!");
-      rl.close();
-      return;
+      console.error("\n❌ ERRO: Endereço do referenciador inválido!");
+      process.exit(1);
     }
     
-    // Perguntar pelo valor do depósito
-    const depositAmountStr = await new Promise(resolve => {
-      rl.question('\nDigite o valor do depósito em SOL (padrão: 0.1): ', answer => {
-        resolve(answer.trim() || '0.1');
-      });
-    });
-    
+    // Converter valor do depósito
     let depositAmount;
     try {
       depositAmount = Math.floor(parseFloat(depositAmountStr) * 1e9); // Converter para lamports
     } catch (e) {
-      console.error("❌ ERRO: Valor do depósito inválido!");
-      rl.close();
-      return;
+      console.error("\n❌ ERRO: Valor do depósito inválido!");
+      process.exit(1);
     }
-    
-    // Perguntar pelo caminho do config
-    const configPath = await new Promise(resolve => {
-      rl.question('\nDigite o caminho do arquivo de configuração (ou pressione Enter para usar o padrão): ', answer => {
-        resolve(answer.trim() || './matriz-config.json');
-      });
-    });
-    
-    // Fechar a interface
-    rl.close();
     
     // Carregar carteira
     console.log(`\nCarregando carteira de ${walletPath}...`);
@@ -600,7 +459,7 @@ async function main() {
     
     if (balance < depositAmount + 10_000_000) {
       console.error("❌ Saldo insuficiente!");
-      return;
+      process.exit(1);
     }
     
     // Verificar referenciador
@@ -615,7 +474,7 @@ async function main() {
       referrerInfo = await program.account.userAccount.fetch(referrerPDA);
       if (!referrerInfo.isRegistered) {
         console.error("❌ Referenciador não está registrado!");
-        return;
+        process.exit(1);
       }
       
       console.log("✅ Referenciador verificado");
@@ -635,28 +494,14 @@ async function main() {
         // NOVA VERIFICAÇÃO: Se for slot 3, verificar se o referenciador está registrado no airdrop
         if (!await isUserRegisteredInAirdrop(connection, referrerAddress)) {
           console.log("\n⚠️ ATENÇÃO: O referenciador não está registrado no programa de airdrop!");
-          console.log("Para preencher o slot 3, o referenciador deve estar registrado no airdrop.");
-          
-          // Perguntar se deseja continuar
-          const continuePrompt = createInterface();
-          const shouldContinue = await new Promise(resolve => {
-            continuePrompt.question('\nDeseja continuar mesmo assim? (S/n): ', answer => {
-              continuePrompt.close();
-              resolve(answer.trim().toLowerCase() !== 'n');
-            });
-          });
-          
-          if (!shouldContinue) {
-            console.log("\n❌ Operação cancelada. Peça ao referenciador para executar register-airdrop-user.js primeiro.");
-            return;
-          }
-          
-          console.log("\n⚠️ Continuando mesmo sem registro no airdrop - isso pode falhar!");
+          console.log("❌ Para preencher o slot 3, o referenciador deve estar registrado no airdrop.");
+          console.log("   Execute: node register-airdrop-user.js <carteira-referenciador>");
+          process.exit(1);
         }
       }
     } catch (e) {
       console.error("❌ Erro ao verificar referenciador:", e);
-      return;
+      process.exit(1);
     }
     
     // Verificar se usuário já está registrado
@@ -669,7 +514,7 @@ async function main() {
       const userInfo = await program.account.userAccount.fetch(userPDA);
       if (userInfo.isRegistered) {
         console.log("⚠️ Você já está registrado!");
-        return;
+        process.exit(0);
       }
     } catch {
       console.log("✅ Usuário não registrado, prosseguindo...");
@@ -678,27 +523,13 @@ async function main() {
     // NOVA ETAPA: Verificar se o usuário está registrado no airdrop
     if (!await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey)) {
       console.log("\n⚠️ ATENÇÃO: Você não está registrado no programa de airdrop!");
-      console.log("É necessário se registrar no airdrop antes de se registrar na matriz.");
-      
-      // Perguntar se deseja continuar
-      const continuePrompt = createInterface();
-      const shouldContinue = await new Promise(resolve => {
-        continuePrompt.question('\nDeseja se registrar no airdrop automaticamente? (S/n): ', answer => {
-          continuePrompt.close();
-          resolve(answer.trim().toLowerCase() !== 'n');
-        });
-      });
-      
-      if (!shouldContinue) {
-        console.log("\n❌ Operação cancelada. Execute register-airdrop-user.js primeiro.");
-        return;
-      }
+      console.log("🚀 Registrando automaticamente no airdrop...");
       
       // Registrar no airdrop
       const registeredInAirdrop = await registerUserInAirdrop(connection, walletKeypair);
       if (!registeredInAirdrop) {
         console.log("\n❌ Falha ao registrar no airdrop. Execute register-airdrop-user.js manualmente.");
-        return;
+        process.exit(1);
       }
       
       console.log("\n✅ Registrado com sucesso no airdrop!");
@@ -771,21 +602,9 @@ async function main() {
               
               // Verificar se o upline está registrado no airdrop
               if (!await isUserRegisteredInAirdrop(connection, uplineWallet)) {
-                console.log(`  ⚠️ Upline não está registrado no programa de airdrop!`);
-                
-                // Perguntar se deseja continuar mesmo assim
-                const continuePrompt = createInterface();
-                const shouldContinue = await new Promise(resolve => {
-                  continuePrompt.question(`\nUpline ${uplineWallet.toString()} não está registrado no airdrop. Continuar mesmo assim? (S/n): `, answer => {
-                    continuePrompt.close();
-                    resolve(answer.trim().toLowerCase() !== 'n');
-                  });
-                });
-                
-                if (!shouldContinue) {
-                  console.log("\n❌ Operação cancelada. Peça ao upline para executar register-airdrop-user.js primeiro.");
-                  return;
-                }
+                console.log(`  ❌ Upline ${uplineWallet.toString()} não está registrado no programa de airdrop!`);
+                console.log(`     Este upline será ignorado na recursão.`);
+                continue;
               } else {
                 console.log(`  ✅ Upline registrado no airdrop`);
               }
@@ -811,51 +630,13 @@ async function main() {
           }
         }
         
-        console.log(`  ✅ Total de uplines: ${uplineAccounts.length / 2}`);
+        console.log(`  ✅ Total de uplines válidos: ${uplineAccounts.length / 2}`);
       } else {
         console.log("ℹ️ Não há uplines para processar (usuário base)");
       }
       
       // Preparar contas do programa de airdrop para o slot 3
       airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
-      
-      // NOVA ETAPA: Pré-criar a conta da próxima semana no airdrop
-      if (!airdropInfo.nextWeekDataInfo) {
-        console.log("\n⚠️ Conta da próxima semana não encontrada, tentando criar...");
-        
-        // Criar a conta da próxima semana
-        const created = await createNextWeekAccount(connection, walletKeypair, airdropInfo);
-        
-        if (created) {
-          console.log("\n✅ Conta da próxima semana criada com sucesso!");
-          // Verificar se a conta foi realmente criada
-          const nextWeekDataInfo = await connection.getAccountInfo(airdropInfo.nextWeekDataPda);
-          if (nextWeekDataInfo) {
-            console.log("✅ Verificação confirmada: Conta da próxima semana encontrada");
-            airdropInfo.nextWeekDataInfo = nextWeekDataInfo;
-          } else {
-            console.log("⚠️ Verificação falhou: Conta da próxima semana não encontrada mesmo após criação");
-          }
-        } else {
-          console.log("\n⚠️ Falha ao criar conta da próxima semana");
-          
-          // Perguntar se deseja continuar mesmo assim
-          const continuePrompt = createInterface();
-          const shouldContinue = await new Promise(resolve => {
-            continuePrompt.question('\nConta da próxima semana não foi criada. Continuar mesmo assim? (S/n): ', answer => {
-              continuePrompt.close();
-              resolve(answer.trim().toLowerCase() !== 'n');
-            });
-          });
-          
-          if (!shouldContinue) {
-            console.log("\n❌ Operação cancelada. Tente novamente ou contate o administrador do programa.");
-            return;
-          }
-          
-          console.log("\n⚠️ Continuando mesmo sem a conta da próxima semana - isso pode falhar!");
-        }
-      }
     }
     
     // Carregar ALT
@@ -864,7 +645,7 @@ async function main() {
     
     if (!lookupTableAccount) {
       console.error("❌ ALT não encontrada!");
-      return;
+      process.exit(1);
     }
     
     // Preparar transação
@@ -877,7 +658,7 @@ async function main() {
     const instructions = [];
     
     // Instruções de compute budget
-    const computeUnits = isSlot3 ? 1_000_000 : 1_400_000; // Reduzido para slot 3
+    const computeUnits = isSlot3 ? 1_000_000 : 1_400_000;
     const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
       units: computeUnits
     });
@@ -970,14 +751,6 @@ async function main() {
       });
       console.log(`  ➕ Referrer Wallet (CRITICAL): ${referrerAddress.toString()}`);
       
-      // ADIÇÃO CRÍTICA: Adicionar também o PDA do referenciador como conta do programa matriz
-      mainRemainingAccounts.push({
-        pubkey: referrerPDA,  // Esta é uma conta que pertence ao programa matriz
-        isWritable: true,
-        isSigner: false,
-      });
-      console.log(`  ➕ Referrer PDA (MATRIX PROGRAM): ${referrerPDA.toString()}`);
-      
       // Adicionar uplines
       mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
     }
@@ -987,7 +760,7 @@ async function main() {
     console.log(`  - Chainlink: 2 contas`);
     
     if (isSlot3) {
-      console.log(`  - Airdrop: 5 contas (incluindo carteira do referenciador e PDA do programa matriz)`);
+      console.log(`  - Airdrop: 5 contas (incluindo carteira do referenciador)`);
       console.log(`  - Uplines: ${uplineAccounts.length} contas (${uplineAccounts.length / 2} uplines)`);
     }
     

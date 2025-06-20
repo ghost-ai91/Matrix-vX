@@ -1,4 +1,9 @@
 [
+
+  solana transfer C7krhCrrXAmQW8vfMSWfPWCbgu2eJC62R8xTuoCZLdDY 0.20 --allow-unfunded-recipient
+
+
+  node referv6.js ./carteiras/carteira3.json ./matriz-config.json QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv 5EzjPd9ZKqHFSZ9d4rND3X3uwXSVxT65DSkerK6jHaw2
   {
     "index": 1,
     "publicKey": "HJiNLd2uw3DK635MNKydPvkJq56FgZsX2Cow3B7wR2g5",

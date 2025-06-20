@@ -3,7 +3,6 @@ use anchor_lang::solana_program::{self, clock::Clock};
 use anchor_spl::token::{self, Token};
 use anchor_spl::associated_token::AssociatedToken;
 use chainlink_solana as chainlink;
-use solana_program::instruction::Instruction;
 use solana_program::instruction::AccountMeta;
 use solana_program::program::invoke;
 #[cfg(not(feature = "no-entrypoint"))]
@@ -137,24 +136,24 @@ fn user_exists_in_airdrop<'info>(
     false
 }
 
-// Função notificar programa de airdrop - Versão final
+// Função corrigida para notificar programa de airdrop
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
     program_id: &Pubkey,
     remaining_accounts: &[AccountInfo<'info>],
     system_program: &AccountInfo<'info>,
+    user_wallet: &AccountInfo<'info>,  // NOVO: adicionar user_wallet como parâmetro
 ) -> Result<()> {
     use solana_program::instruction::Instruction;
     
     msg!("🔍 Notificando programa de airdrop sobre matriz completada");
+    msg!("👤 User wallet (payer): {}", user_wallet.key());
     
     // Verificar se o usuário existe no programa de airdrop
     if !user_exists_in_airdrop(remaining_accounts, referrer_wallet) {
         msg!("❌ ERRO: O referenciador não está registrado no programa de airdrop. Por favor, registre-se primeiro usando o script register-airdrop-user.js");
         return Err(error!(ErrorCode::UserNotRegisteredInAirdrop));
     }
-    
-    // Abordagem simplificada: Usar o programa ID diretamente
     
     // 1. Derivar as PDAs necessárias
     let state_seeds = &[b"program_state".as_ref()];
@@ -215,16 +214,7 @@ fn notify_airdrop_program<'info>(
             error!(ErrorCode::MissingUplineAccount)
         })?;
     
-    // CORREÇÃO: Encontrar ou criar info para o programa matriz
-    // Usamos qualquer conta do remaining_accounts que tenha como owner o crate::ID (nosso programa)
-    let program_info = remaining_accounts.iter()
-        .find(|a| a.owner == &crate::ID)
-        .ok_or_else(|| {
-            msg!("❌ ERRO: Não foi possível encontrar uma conta do programa matriz");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    
-    // 6. Cria instrução para o programa de airdrop
+    // 6. Cria instrução para o programa de airdrop - CORRIGIDA
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
         accounts: vec![
@@ -233,7 +223,8 @@ fn notify_airdrop_program<'info>(
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(*program_id, true),  // Programa matriz como signatário
+            AccountMeta::new(user_wallet.key(), true),     // CORRIGIDO: user_wallet como signer
+            AccountMeta::new(*program_id, false),          // CORRIGIDO: programa não é signer
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
@@ -246,7 +237,8 @@ fn notify_airdrop_program<'info>(
         user_account_info.clone(),
         current_week_data_info.clone(),
         next_week_data_info.clone(),
-        program_info.clone(),  // CORREÇÃO: usar uma conta existente
+        user_wallet.clone(),         // NOVO: incluir user_wallet
+        system_program.clone(),        // Usar conta existente do programa
         system_program.clone(),
     ];
     
@@ -1071,14 +1063,15 @@ fn process_swap_and_burn<'info>(
 /// - bool: indicates if the matrix was completed
 /// - Pubkey: referrer key for use in recursion
 fn process_referrer_chain<'info>(
-   user_key: &Pubkey,
-   referrer: &mut Account<'_, UserAccount>,
-   next_chain_id: u32,
-   referrer_wallet: &Pubkey,
-   program_id: &Pubkey,
-   remaining_accounts: &[AccountInfo<'info>],
-   system_program: &AccountInfo<'info>,
-) -> Result<(bool, Pubkey)> {
+    user_key: &Pubkey,
+    referrer: &mut Account<'_, UserAccount>,
+    next_chain_id: u32,
+    referrer_wallet: &Pubkey,
+    program_id: &Pubkey,
+    remaining_accounts: &[AccountInfo<'info>],
+    system_program: &AccountInfo<'info>,
+    user_wallet: &AccountInfo<'info>,  // ADICIONAR ESTE PARÂMETRO
+ ) -> Result<(bool, Pubkey)> {
    msg!("🔄 Processing referrer chain for user: {}", user_key);
    msg!("👤 Referrer: {}", referrer.key());
    
@@ -1107,11 +1100,12 @@ fn process_referrer_chain<'info>(
        
        // Chamar a função notify_airdrop_program simplificada
        notify_airdrop_program(
-           referrer_wallet,
-           program_id,
-           remaining_accounts,
-           system_program,
-       )?;
+        referrer_wallet,
+        program_id,
+        remaining_accounts,
+        system_program,
+        user_wallet,  // NOVO: passar user_wallet
+    )?;
        
        msg!("🔄 Resetting matrix with new ID: {}", next_chain_id);
        referrer.chain.id = next_chain_id;
@@ -1885,14 +1879,15 @@ else if slot_idx == 2 {
 
   // Process the referrer's matrix
   let (chain_completed, upline_pubkey) = process_referrer_chain(
-      &ctx.accounts.user.key(),
-      &mut ctx.accounts.referrer,
-      ctx.accounts.state.next_chain_id,
-      &ctx.accounts.referrer_wallet.key(),
-      &ctx.program_id,
-      &ctx.remaining_accounts,
-      &ctx.accounts.system_program.to_account_info(),
-  )?;
+    &ctx.accounts.user.key(),
+    &mut ctx.accounts.referrer,
+    ctx.accounts.state.next_chain_id,
+    &ctx.accounts.referrer_wallet.key(),
+    &ctx.program_id,
+    &ctx.remaining_accounts,
+    &ctx.accounts.system_program.to_account_info(),
+    &ctx.accounts.user_wallet.to_account_info(),  // NOVO: passar user_wallet
+)?;
 
   // Add cleanup:
   force_memory_cleanup();
@@ -2161,13 +2156,15 @@ else if slot_idx == 2 {
                       
                       // Process matrix completion only if necessary
                       if chain_completed {
-                          // Notificar o programa de airdrop sobre a matriz completada
-                          notify_airdrop_program(
-                              &upline_wallet.key(),
-                              &ctx.program_id,
-                              ctx.remaining_accounts,
-                              &ctx.accounts.system_program.to_account_info()
-                          )?;
+// Notificar o programa de airdrop sobre a matriz completada
+notify_airdrop_program(
+    &upline_wallet.key(),
+    &ctx.program_id,
+    ctx.remaining_accounts,
+    &ctx.accounts.system_program.to_account_info(),
+    &ctx.accounts.user_wallet.to_account_info()  // NOVO: adicionar user_wallet
+)?;
+                          
                           
                           // Get new ID for the reset matrix
                           let state = &mut ctx.accounts.state;
