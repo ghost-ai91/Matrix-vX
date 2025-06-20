@@ -269,6 +269,12 @@ fn notify_airdrop_program<'info>(
         })?;
     msg!("✅ [MATRIX] Matrix program encontrado nos remaining_accounts");
     
+
+    // 7. Criar instrução
+msg!("🔍 [MATRIX] Criando instrução CPI...");
+msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE LOG
+
+
     // 7. Criar instrução
     msg!("🔍 [MATRIX] Criando instrução CPI...");
     let ix = Instruction {
