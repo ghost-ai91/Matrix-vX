@@ -4,25 +4,25 @@ use anchor_spl::token::{self, Token};
 use anchor_spl::associated_token::AssociatedToken;
 use chainlink_solana as chainlink;
 #[cfg(not(feature = "no-entrypoint"))]
-use {solana_security_txt::security_txt};
+//use {solana_security_txt::security_txt};
 
 
 declare_id!("273d3yYAozJkMn2qT8afudNiVSF4rpP3zUCKwfw5tJPo");
 
-#[cfg(not(feature = "no-entrypoint"))]
-security_txt! {
-    name: "Referral Matrix System",
-    project_url: "https://matrix.matrix",
-    contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
-    policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
-    preferred_languages: "en",
-    source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
-    source_revision: env!("GITHUB_SHA", "unknown-revision"),
-    source_release: env!("PROGRAM_VERSION", "unknown-version"),
-    encryption: "",
-    auditors: "",
-    acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
-}
+//#[cfg(not(feature = "no-entrypoint"))]
+//security_txt! {
+  //  name: "Referral Matrix System",
+    //project_url: "https://matrix.matrix",
+    //contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
+    //policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
+    //preferred_languages: "en",
+    //source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
+    //source_revision: env!("GITHUB_SHA", "unknown-revision"),
+    //source_release: env!("PROGRAM_VERSION", "unknown-version"),
+    //encryption: "",
+    //auditors: "",
+    //acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
+//}
 
 // Minimum deposit amount in USD (10 dollars in base units - 8 decimals)
 const MINIMUM_USD_DEPOSIT: u64 = 10_00000000; // 10 USD with 8 decimals (Chainlink format)
