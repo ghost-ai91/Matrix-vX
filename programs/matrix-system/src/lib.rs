@@ -248,7 +248,6 @@ fn notify_airdrop_program<'info>(
         next_week_data_info.clone(),
         user_wallet.clone(),        // USAR DIRETAMENTE O PARÂMETRO
         system_program.clone(),
-        system_program.clone(),
     ];
     
     // 8. Executa a CPI

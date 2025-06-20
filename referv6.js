@@ -751,12 +751,7 @@ async function main() {
       });
       console.log(`  ➕ Referrer Wallet (CRITICAL): ${referrerAddress.toString()}`);
 
-          // Após adicionar a referrer wallet
-    mainRemainingAccounts.push({
-      pubkey: walletKeypair.publicKey,  // user_wallet
-      isWritable: true,
-      isSigner: false,  // false porque é remaining_account
-    });
+
       
       // Adicionar uplines
       mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
