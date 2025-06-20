@@ -207,19 +207,27 @@ fn notify_airdrop_program<'info>(
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-    // 8. Coletar as contas necessárias
+    // 8. CORREÇÃO: Encontrar explicitamente a carteira do referenciador
+    let referrer_wallet_info = remaining_accounts.iter()
+        .find(|a| a.key() == *referrer_wallet)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Carteira do referenciador não encontrada nos remaining_accounts");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    
+    // Verificar se a carteira do referenciador é um signatário
+    if !referrer_wallet_info.is_signer {
+        msg!("⚠️ Aviso: Carteira do referenciador não é signatária na transação");
+        // Continuamos, mas é bom estar ciente disso
+    }
+    
+    // 9. Coletar as contas necessárias na ordem correta
     let mut account_infos = Vec::new();
     
     // Adiciona estado do programa
     account_infos.push(program_state_account.clone());
     
-    // Adiciona referrer wallet
-    let referrer_wallet_info = remaining_accounts.iter()
-        .find(|a| a.key() == *referrer_wallet)
-        .ok_or_else(|| {
-            msg!("❌ ERRO: Carteira do referenciador não encontrada");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
+    // Adiciona referrer wallet - CORREÇÃO: usar a conta encontrada explicitamente
     account_infos.push(referrer_wallet_info.clone());
     
     // Adiciona a conta do usuário no programa de airdrop
@@ -248,10 +256,22 @@ fn notify_airdrop_program<'info>(
         })?;
     account_infos.push(next_week_data_info.clone());
     
+    // Adiciona o próprio programa matriz como readonly
+    account_infos.push(AccountInfo::new(
+        &program_id,
+        false,
+        false,
+        &0,
+        &[],
+        &program_id,
+        false,
+        0,
+    ));
+    
     // Adiciona o programa do sistema
     account_infos.push(system_program.clone());
     
-    // 9. Invoca a instrução no programa de airdrop
+    // 10. Invoca a instrução no programa de airdrop
     msg!("🚀 Invocando programa de airdrop...");
     invoke(
         &instruction,
