@@ -81,16 +81,16 @@ pub mod verified_addresses {
 pub mod admin_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
+    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva");
 
-    pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
+    pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva");
 }
 
 //AirDrop
 pub mod airdrop_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX");
+    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("BLCwTa5k6YB5oDqLDFnSYiNabhXos1vAKrUTRMufZDXK");
 }
 
 // Constants for the airdrop program
