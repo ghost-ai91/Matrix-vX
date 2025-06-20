@@ -15,7 +15,7 @@ const idl = require("./target/idl/referral_system.json")
 
 // Configurações principais
 const PROGRAM_ID = new PublicKey(
-  "HTEtvwPnpCxDiWKDvfQFiSxF3QwFEWze653WprtAotfa"
+  "GBpSgsG8KguJxaEJBm26TuCh2psatt8iMwuvy8h1rMQt"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
@@ -143,13 +143,13 @@ async function testAddressLookupTables() {
     const addressesToAdd = [
       // Endereços do programa e tokens
       new web3.PublicKey(
-        "6VcvQ6GJawGCo2fVAsze4YXNK2agJErh88hRfpfDDWzd"
+        "GBpSgsG8KguJxaEJBm26TuCh2psatt8iMwuvy8h1rMQt"
       ), // MATRIX_PROGRAM_ID
       new web3.PublicKey(
         "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
       ), // TOKEN_MINT
       new web3.PublicKey(
-        "HHvHrbT3iBh3gyj4wQJjv3FbZrVZr83MRJMbtkZpn3kR"
+        "3oGSx4JfPkjytxe3Urc7vva6HhYeSjxnbc7Jk94FYq1P"
       ), // STATE_ADDRESS
 
       // Endereços da Pool Meteora
