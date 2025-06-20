@@ -1,0 +1,139 @@
+Program ComputeBudget111111111111111111111111111111 invoke [1]
+Program ComputeBudget111111111111111111111111111111 success
+Program ComputeBudget111111111111111111111111111111 invoke [1]
+Program ComputeBudget111111111111111111111111111111 success
+Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]
+Program log: Create
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: GetAccountDataSize
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1569 of 985186 compute units
+Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program 11111111111111111111111111111111 invoke [2]
+Program 11111111111111111111111111111111 success
+Program log: Initialize the associated token account
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: InitializeImmutableOwner
+Program log: Please upgrade to SPL Token 2022 for immutable owner support
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 978599 compute units
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: InitializeAccount3
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3158 of 974717 compute units
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 28458 of 999700 compute units
+Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL invoke [1]
+Program log: Create
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: GetAccountDataSize
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1595 of 965730 compute units
+Program return: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA pQAAAAAAAAA=
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program 11111111111111111111111111111111 invoke [2]
+Program 11111111111111111111111111111111 success
+Program log: Initialize the associated token account
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: InitializeImmutableOwner
+Program log: Please upgrade to SPL Token 2022 for immutable owner support
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 1405 of 959117 compute units
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: InitializeAccount3
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 4214 of 955236 compute units
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20537 of 971242 compute units
+Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success
+Program GBpSgsG8KguJxaEJBm26TuCh2psatt8iMwuvy8h1rMQt invoke [1]
+Program log: Instruction: RegisterWithSolDeposit
+Program 11111111111111111111111111111111 invoke [2]
+Program 11111111111111111111111111111111 success
+Program log: 🚀 Starting user registration with SOL deposit
+Program log: 👤 User wallet: C7krhCrrXAmQW8vfMSWfPWCbgu2eJC62R8xTuoCZLdDY
+Program log: 👤 Referrer wallet: QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv
+Program log: 💰 Deposit amount: 100000000 lamports
+Program log: 📊 Remaining accounts count: 12
+Program log: 🎯 Matrix program ID: GBpSgsG8KguJxaEJBm26TuCh2psatt8iMwuvy8h1rMQt
+Program log: 🎯 Airdrop program ID: J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX
+Program log: ✅ Referrer is registered, chain ID: 1, filled slots: 2
+Program HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny invoke [2]
+Program log: Instruction: Query
+Program HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny consumed 2781 of 874215 compute units
+Program return: HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny gKGhAdLwLxcAAAAAkclVaHCefUgDAAAAAAAAAAAAAAA=
+Program HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny success
+Program HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny invoke [2]
+Program log: Instruction: Query
+Program HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny consumed 1958 of 869569 compute units
+Program return: HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny CA==
+Program HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny success
+Program 11111111111111111111111111111111 invoke [2]
+Program 11111111111111111111111111111111 success
+Program 11111111111111111111111111111111 invoke [2]
+Program 11111111111111111111111111111111 success
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke [2]
+Program log: Instruction: SyncNative
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA consumed 3045 of 850526 compute units
+Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA success
+Program log: ✅ SOL wrapped to WSOL for slot 3 processing
+Program log: 🔄 Processing referrer chain for user: 7pgm5FsCjTRYze666ThZHWCrtoAADjvZBjfojY97GW2y
+Program log: 👤 Referrer: 2ZpKx8jzny4xcrEeXr5cXEVQXmQw3HwzQtRybiDc95GY
+Program log: 📍 Adding user to slot 2
+Program data: Swqx0/4SFIECAQAAAGVdYFCst4YkPDE/mkFP+kfJ6rlo8nYOEDhyBY7SDZ3+F0PJCxkCNN/l2wtOCj3rbyI5XOwd66vgj8tl/Y3JN0U=
+Program log: 📊 Matrix slots filled: 3/3
+Program log: 🎉 Matrix completed! Notificando programa de airdrop...
+Program log: 🔍 [MATRIX] === INÍCIO notify_airdrop_program ===
+Program log: 📋 [MATRIX] Parâmetros recebidos:
+Program log:   - referrer_wallet: QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv
+Program log:   - program_id: GBpSgsG8KguJxaEJBm26TuCh2psatt8iMwuvy8h1rMQt
+Program log:   - system_program: 11111111111111111111111111111111
+Program log:   - user_wallet: C7krhCrrXAmQW8vfMSWfPWCbgu2eJC62R8xTuoCZLdDY
+Program log:   - user_wallet is_signer: true
+Program log:   - user_wallet is_writable: true
+Program log:   - user_wallet owner: 11111111111111111111111111111111
+Program log:   - user_wallet lamports: 83186680
+Program log: 📋 [MATRIX] Remaining accounts count: 12
+Program log:   [0] 4ndfcH16GKY76bzDkKfyVwHMoF8oY75KES2VaAhUYksN (owner: 24Uqj9JCLxUeoC3hGfh5W3s9FM9uCHDS2SG3LYwBpyTi, writable: true, signer: false)
+Program log:   [1] CocstBGbeDVyTJWxbWs4docwWapVADAo1xXQSh9RfPMz (owner: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, writable: true, signer: false)
+Program log:   [2] 6f2FVX5UT5uBtgknc8fDj119Z7DQoLJeKRmBq7j1zsVi (owner: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, writable: true, signer: false)
+Program log:   [3] 6m1wvYoPrwjAnbuGMqpMoodQaq4VnZXRjrzufXnPSjmj (owner: TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA, writable: true, signer: false)
+Program log:   [4] 99B2bTijsU6f1GCT73HmdR7HCFFjGMBcPZY6jZ96ynrR (owner: HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny, writable: false, signer: false)
+Program log:   [5] HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny (owner: BPFLoaderUpgradeab1e11111111111111111111111, writable: false, signer: false)
+Program log:   [6] BwhbuvoF8ssPmsQxZAqLWTderszHufz9fF3YUFrwfTYT (owner: J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX, writable: true, signer: false)
+Program log:   [7] CcUz2RXiRJyMENjCQJkNaeA6SjH29atQUiYtm43fmazP (owner: J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX, writable: true, signer: false)
+Program log:   [8] DWprJjJEZpNRtW2h8mwdzdvqwBSkxhbnJvAMRLLSdJCS (owner: J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX, writable: true, signer: false)
+Program log:   [9] DCnXS9VYXUzvcW4r1Hu1WNwzEPh4NPqzefLViiDGU27Z (owner: 11111111111111111111111111111111, writable: true, signer: false)
+Program log:   [10] QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv (owner: 11111111111111111111111111111111, writable: true, signer: false)
+Program log:   [11] GBpSgsG8KguJxaEJBm26TuCh2psatt8iMwuvy8h1rMQt (owner: BPFLoaderUpgradeab1e11111111111111111111111, writable: false, signer: false)
+Program log: 🔍 [MATRIX] Verificando se referrer existe no airdrop...
+Program log: Verificando se o usuário existe no programa de airdrop: QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv
+Program log: Seeds: [[117, 115, 101, 114, 95, 97, 99, 99, 111, 117, 110, 116], [6, 16, 223, 93, 141, 5, 32, 144, 145, 149, 137, 187, 143, 95, 105, 240, 194, 92, 109, 103, 73, 218, 103, 189, 13, 85, 124, 170, 155, 195, 148, 163]]
+Program log: User PDA: CcUz2RXiRJyMENjCQJkNaeA6SjH29atQUiYtm43fmazP
+Program log: Conta encontrada: CcUz2RXiRJyMENjCQJkNaeA6SjH29atQUiYtm43fmazP
+Program log: ✅ [MATRIX] Referrer existe no airdrop
+Program log: 🔍 [MATRIX] Derivando PDAs...
+Program log:   - program_state_pda: BwhbuvoF8ssPmsQxZAqLWTderszHufz9fF3YUFrwfTYT
+Program log:   - user_account_pda: CcUz2RXiRJyMENjCQJkNaeA6SjH29atQUiYtm43fmazP
+Program log: 🔍 [MATRIX] Procurando contas nos remaining_accounts...
+Program log: ✅ [MATRIX] program_state_account encontrado
+Program log: 🔍 [MATRIX] Lendo semana atual...
+Program log: ✅ [MATRIX] Semana atual: 11
+Program log: 🔍 [MATRIX] Derivando PDAs das semanas...
+Program log:   - current_week_data_pda: DWprJjJEZpNRtW2h8mwdzdvqwBSkxhbnJvAMRLLSdJCS
+Program log:   - next_week_data_pda: DCnXS9VYXUzvcW4r1Hu1WNwzEPh4NPqzefLViiDGU27Z
+Program log: 🔍 [MATRIX] Procurando contas específicas...
+Program log: ✅ [MATRIX] referrer_wallet_info encontrado
+Program log:   - referrer_wallet_info owner: 11111111111111111111111111111111
+Program log:   - referrer_wallet_info is_writable: true
+Program log: ✅ [MATRIX] user_account_info encontrado
+Program log: ✅ [MATRIX] current_week_data_info encontrado
+Program log: ✅ [MATRIX] next_week_data_info encontrado
+Program log: 🔍 [MATRIX] Criando instrução CPI...
+Program log: 📋 [MATRIX] Instrução criada com contas:
+Program log:   [0] BwhbuvoF8ssPmsQxZAqLWTderszHufz9fF3YUFrwfTYT (signer: false, writable: true)
+Program log:   [1] QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv (signer: false, writable: true)
+Program log:   [2] CcUz2RXiRJyMENjCQJkNaeA6SjH29atQUiYtm43fmazP (signer: false, writable: true)
+Program log:   [3] DWprJjJEZpNRtW2h8mwdzdvqwBSkxhbnJvAMRLLSdJCS (signer: false, writable: true)
+Program log:   [4] DCnXS9VYXUzvcW4r1Hu1WNwzEPh4NPqzefLViiDGU27Z (signer: false, writable: true)
+Program log:   [5] C7krhCrrXAmQW8vfMSWfPWCbgu2eJC62R8xTuoCZLdDY (signer: true, writable: true)
+Log truncated
+Program log: 📋 [MATRIX] Account infos preparados:

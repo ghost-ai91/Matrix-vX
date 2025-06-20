@@ -143,32 +143,133 @@ fn notify_airdrop_program<'info>(
     system_program: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
 ) -> Result<()> {
-    // ... todo código anterior permanece igual até ...
+    use solana_program::instruction::Instruction;
 
-    // 6. NOVO: Procurar o programa matrix nos remaining_accounts ou criar referência
+    msg!("🔍 [MATRIX] === INÍCIO notify_airdrop_program ===");
+    msg!("📋 [MATRIX] Parâmetros recebidos:");
+    msg!("  - referrer_wallet: {}", referrer_wallet);
+    msg!("  - program_id: {}", program_id);
+    msg!("  - system_program: {}", system_program.key());
+    msg!("  - user_wallet: {}", user_wallet.key());
+    msg!("  - user_wallet is_signer: {}", user_wallet.is_signer);
+    msg!("  - user_wallet is_writable: {}", user_wallet.is_writable);
+    msg!("  - user_wallet owner: {}", user_wallet.owner);
+    msg!("  - user_wallet lamports: {}", user_wallet.lamports());
+    
+    msg!("📋 [MATRIX] Remaining accounts count: {}", remaining_accounts.len());
+    for (i, acc) in remaining_accounts.iter().enumerate() {
+        msg!("  [{}] {} (owner: {}, writable: {}, signer: {})", 
+            i, 
+            acc.key(), 
+            acc.owner,
+            acc.is_writable,
+            acc.is_signer
+        );
+    }
+    
+    // Verificar se o usuário existe no programa de airdrop
+    msg!("🔍 [MATRIX] Verificando se referrer existe no airdrop...");
+    if !user_exists_in_airdrop(remaining_accounts, referrer_wallet) {
+        msg!("❌ [MATRIX] Referrer não registrado no airdrop");
+        return Err(error!(ErrorCode::UserNotRegisteredInAirdrop));
+    }
+    msg!("✅ [MATRIX] Referrer existe no airdrop");
+    
+    // 1. Derivar as PDAs necessárias
+    msg!("🔍 [MATRIX] Derivando PDAs...");
+    let state_seeds = &[b"program_state".as_ref()];
+    let (program_state_pda, _) = Pubkey::find_program_address(state_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  - program_state_pda: {}", program_state_pda);
+    
+    let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
+    let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  - user_account_pda: {}", user_account_pda);
+    
+    // 2. Encontrar contas nos remaining_accounts
+    msg!("🔍 [MATRIX] Procurando contas nos remaining_accounts...");
+    
+    let program_state_account = remaining_accounts.iter()
+        .find(|a| a.key() == program_state_pda)
+        .ok_or_else(|| {
+            msg!("❌ [MATRIX] program_state_account não encontrado!");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ [MATRIX] program_state_account encontrado");
+    
+    // 3. Obter semana atual
+    msg!("🔍 [MATRIX] Lendo semana atual...");
+    let data_borrow = program_state_account.data.borrow();
+    if data_borrow.len() < 73 {
+        msg!("❌ [MATRIX] program_state data muito pequeno: {} bytes", data_borrow.len());
+        return Err(error!(ErrorCode::MissingUplineAccount));
+    }
+    let current_week = data_borrow[72];
+    drop(data_borrow); // Liberar o borrow imediatamente
+    msg!("✅ [MATRIX] Semana atual: {}", current_week);
+    
+    // 4. Derivar PDAs das semanas
+    msg!("🔍 [MATRIX] Derivando PDAs das semanas...");
+    let week_bytes = current_week.to_le_bytes();
+    let current_week_data_seeds = &[b"weekly_data".as_ref(), &week_bytes];
+    let (current_week_data_pda, _) = Pubkey::find_program_address(current_week_data_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  - current_week_data_pda: {}", current_week_data_pda);
+    
+    let next_week = current_week + 1;
+    let next_week_bytes = next_week.to_le_bytes();
+    let next_week_data_seeds = &[b"weekly_data".as_ref(), &next_week_bytes];
+    let (next_week_data_pda, _) = Pubkey::find_program_address(next_week_data_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  - next_week_data_pda: {}", next_week_data_pda);
+    
+    // 5. Verificar se contas existem
+    msg!("🔍 [MATRIX] Procurando contas específicas...");
+    
+    let referrer_wallet_info = remaining_accounts.iter()
+        .find(|a| a.key() == *referrer_wallet)
+        .ok_or_else(|| {
+            msg!("❌ [MATRIX] referrer_wallet_info não encontrado!");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ [MATRIX] referrer_wallet_info encontrado");
+    msg!("  - referrer_wallet_info owner: {}", referrer_wallet_info.owner);
+    msg!("  - referrer_wallet_info is_writable: {}", referrer_wallet_info.is_writable);
+    
+    let user_account_info = remaining_accounts.iter()
+        .find(|a| a.key() == user_account_pda)
+        .ok_or_else(|| {
+            msg!("❌ [MATRIX] user_account_info não encontrado!");
+            error!(ErrorCode::UserNotRegisteredInAirdrop)
+        })?;
+    msg!("✅ [MATRIX] user_account_info encontrado");
+    
+    let current_week_data_info = remaining_accounts.iter()
+        .find(|a| a.key() == current_week_data_pda)
+        .ok_or_else(|| {
+            msg!("❌ [MATRIX] current_week_data_info não encontrado!");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ [MATRIX] current_week_data_info encontrado");
+    
+    let next_week_data_info = remaining_accounts.iter()
+        .find(|a| a.key() == next_week_data_pda)
+        .ok_or_else(|| {
+            msg!("❌ [MATRIX] next_week_data_info não encontrado!");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ [MATRIX] next_week_data_info encontrado");
+    
+    // 6. Procurar o programa matrix nos remaining_accounts
     msg!("🔍 [MATRIX] Procurando matrix program info...");
     
-    // Primeiro, tentar encontrar nos remaining_accounts
     let matrix_program_info = remaining_accounts.iter()
-        .find(|a| a.key() == program_id);
+        .find(|a| a.key() == *program_id)
+        .ok_or_else(|| {
+            msg!("❌ [MATRIX] Matrix program não encontrado nos remaining_accounts!");
+            msg!("     O cliente deve incluir o programa matrix nos remaining_accounts");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ [MATRIX] Matrix program encontrado nos remaining_accounts");
     
-    // Se não encontrar, precisamos criar uma referência para o próprio programa
-    let matrix_program_account;
-    let matrix_program_ref = if let Some(found) = matrix_program_info {
-        msg!("✅ [MATRIX] Matrix program encontrado nos remaining_accounts");
-        found
-    } else {
-        msg!("⚠️ [MATRIX] Matrix program não encontrado, criando referência...");
-        
-        // IMPORTANTE: Em Solana, programas não podem criar AccountInfo para si mesmos facilmente
-        // A solução é adicionar o programa às remaining_accounts no cliente
-        
-        // Por enquanto, vamos retornar erro informativo
-        msg!("❌ [MATRIX] ERRO: Matrix program deve ser incluído nos remaining_accounts!");
-        return Err(error!(ErrorCode::MissingUplineAccount));
-    };
-
-    // 7. Criar instrução (continua igual)
+    // 7. Criar instrução
     msg!("🔍 [MATRIX] Criando instrução CPI...");
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
@@ -178,14 +279,19 @@ fn notify_airdrop_program<'info>(
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), true),
+            AccountMeta::new(user_wallet.key(), false),
             AccountMeta::new(*program_id, false),
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-    // 8. Preparar contas para CPI - CORRIGIDO
+    msg!("📋 [MATRIX] Instrução criada com contas:");
+    for (i, acc) in ix.accounts.iter().enumerate() {
+        msg!("  [{}] {} (signer: {}, writable: {})", i, acc.pubkey, acc.is_signer, acc.is_writable);
+    }
+    
+    // 8. Preparar contas para CPI
     msg!("🔍 [MATRIX] Preparando account_infos para CPI...");
     
     let account_infos = vec![
@@ -195,7 +301,7 @@ fn notify_airdrop_program<'info>(
         current_week_data_info.clone(),
         next_week_data_info.clone(),
         user_wallet.clone(),
-        matrix_program_ref.clone(),  // Usar a referência encontrada ou criada
+        matrix_program_info.clone(),  // Usar a conta encontrada
         system_program.clone(),
     ];
     
@@ -204,7 +310,7 @@ fn notify_airdrop_program<'info>(
         msg!("  [{}] {} (owner: {})", i, acc.key(), acc.owner);
     }
     
-    // Adicionar debug detalhado
+    // Debug detalhado
     msg!("🔍 [MATRIX] Debug detalhado das contas:");
     msg!("  - user_wallet key: {}", user_wallet.key());
     msg!("  - user_wallet data_len: {}", user_wallet.data_len());

@@ -709,53 +709,58 @@ async function main() {
     // Construir remaining_accounts que inclui contas do airdrop se for slot 3
     let mainRemainingAccounts = [...vaultAAccounts, ...chainlinkAccounts];
     
-    if (isSlot3 && airdropInfo) {
-      console.log("\n🔄 ADICIONANDO CONTAS DO AIRDROP AOS REMAINING ACCOUNTS");
-      
-      // Adicionar contas do programa de airdrop
-      mainRemainingAccounts.push({
-        pubkey: airdropInfo.programStatePda,
-        isWritable: true,
-        isSigner: false,
-      });
-      console.log(`  ➕ Program State PDA: ${airdropInfo.programStatePda.toString()}`);
-      
-      // MODIFICAÇÃO CRÍTICA: Adicionar a conta do usuário no airdrop
-      mainRemainingAccounts.push({
-        pubkey: airdropInfo.userAccountPda,
-        isWritable: true,
-        isSigner: false,
-      });
-      console.log(`  ➕ User Account PDA (AIRDROP): ${airdropInfo.userAccountPda.toString()}`);
-      
-      // Adicionar contas de dados das semanas
-      mainRemainingAccounts.push({
-        pubkey: airdropInfo.currentWeekDataPda,
-        isWritable: true,
-        isSigner: false,
-      });
-      console.log(`  ➕ Current Week Data PDA: ${airdropInfo.currentWeekDataPda.toString()}`);
-      
-      mainRemainingAccounts.push({
-        pubkey: airdropInfo.nextWeekDataPda,
-        isWritable: true,
-        isSigner: false,
-      });
-      console.log(`  ➕ Next Week Data PDA: ${airdropInfo.nextWeekDataPda.toString()}`);
-      
-      // CORREÇÃO CRÍTICA: Adicionar a carteira do referenciador nos remaining_accounts
-      mainRemainingAccounts.push({
-        pubkey: referrerAddress,
-        isWritable: true,
-        isSigner: false,  // Nota: aqui não é signer porque é uma conta adicional
-      });
-      console.log(`  ➕ Referrer Wallet (CRITICAL): ${referrerAddress.toString()}`);
+// No arquivo register-v6.js, após preparar as contas do airdrop (linha ~1040)
 
-
-      
-      // Adicionar uplines
-      mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
-    }
+if (isSlot3 && airdropInfo) {
+  console.log("\n🔄 ADICIONANDO CONTAS DO AIRDROP AOS REMAINING ACCOUNTS");
+  
+  // Adicionar contas do programa de airdrop
+  mainRemainingAccounts.push({
+      pubkey: airdropInfo.programStatePda,
+      isWritable: true,
+      isSigner: false,
+  });
+  console.log(`  ➕ Program State PDA: ${airdropInfo.programStatePda.toString()}`);
+  
+  mainRemainingAccounts.push({
+      pubkey: airdropInfo.userAccountPda,
+      isWritable: true,
+      isSigner: false,
+  });
+  console.log(`  ➕ User Account PDA (AIRDROP): ${airdropInfo.userAccountPda.toString()}`);
+  
+  mainRemainingAccounts.push({
+      pubkey: airdropInfo.currentWeekDataPda,
+      isWritable: true,
+      isSigner: false,
+  });
+  console.log(`  ➕ Current Week Data PDA: ${airdropInfo.currentWeekDataPda.toString()}`);
+  
+  mainRemainingAccounts.push({
+      pubkey: airdropInfo.nextWeekDataPda,
+      isWritable: true,
+      isSigner: false,
+  });
+  console.log(`  ➕ Next Week Data PDA: ${airdropInfo.nextWeekDataPda.toString()}`);
+  
+  mainRemainingAccounts.push({
+      pubkey: referrerAddress,
+      isWritable: true,
+      isSigner: false,
+  });
+  console.log(`  ➕ Referrer Wallet: ${referrerAddress.toString()}`);
+  
+  // NOVO: Adicionar o próprio programa matrix aos remaining_accounts
+  mainRemainingAccounts.push({
+      pubkey: MATRIX_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+  });
+  console.log(`  ➕ Matrix Program ID: ${MATRIX_PROGRAM_ID.toString()}`);
+  
+  // Adicionar uplines
+  mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
+}
     
     console.log(`\n📊 RESUMO DE CONTAS:`);
     console.log(`  - Vault A: 4 contas`);
