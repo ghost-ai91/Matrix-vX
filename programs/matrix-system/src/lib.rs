@@ -137,7 +137,7 @@ fn user_exists_in_airdrop<'info>(
     false
 }
 
-// NOVA VERSÃO SIMPLIFICADA: Função que notifica o programa de airdrop sobre matriz completada
+// NOVA VERSÃO : Função que notifica o programa de airdrop sobre matriz completada
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
     program_id: &Pubkey,
@@ -152,56 +152,131 @@ fn notify_airdrop_program<'info>(
         return Err(error!(ErrorCode::UserNotRegisteredInAirdrop));
     }
     
-    // Derivar as PDAs necessárias
+    // Deriva as PDAs necessárias
+    // 1. PDA do estado do programa de airdrop
     let state_seeds = &[b"program_state".as_ref()];
     let (program_state_pda, _) = Pubkey::find_program_address(state_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("📝 Program state PDA: {}", program_state_pda);
     
+    // 2. PDA da conta do usuário no airdrop (assume que já existe)
     let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
     let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("📝 User account PDA: {}", user_account_pda);
     
-    // Verificar se encontramos todas as contas necessárias
-    let found_state = remaining_accounts.iter().any(|a| a.key() == program_state_pda);
-    let found_user = remaining_accounts.iter().any(|a| a.key() == user_account_pda);
-    let found_referrer = remaining_accounts.iter().any(|a| a.key() == *referrer_wallet);
+    // 3. Busca a conta de estado do programa para obter a semana atual
+    let program_state_account = remaining_accounts.iter()
+        .find(|a| a.key() == program_state_pda)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Estado do programa de airdrop não encontrado");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
     
-    if !found_state || !found_user || !found_referrer {
-        msg!("❌ ERRO: Faltam contas necessárias para o airdrop");
-        msg!("  Estado encontrado: {}", found_state);
-        msg!("  Usuário encontrado: {}", found_user);
-        msg!("  Referrer encontrado: {}", found_referrer);
-        return Err(error!(ErrorCode::MissingUplineAccount));
-    }
+    // 4. Deserializa apenas para obter a semana atual
+    let mut data_slice = &program_state_account.data.borrow()[8..];
+    let airdrop_state = AirdropProgramState::deserialize(&mut data_slice)?;
+    let current_week = airdrop_state.current_week;
+    msg!("📅 Semana atual: {}", current_week);
     
-    // Abordagem radical: Em vez de tentar construir tudo manualmente,
-    // vamos apenas passar a instrução para o programa de airdrop
+    // 5. Deriva PDAs para os dados das semanas
+    let week_bytes = current_week.to_le_bytes();
+    let current_week_data_seeds = &[b"weekly_data".as_ref(), &week_bytes];
+    let (current_week_data_pda, _) = Pubkey::find_program_address(current_week_data_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("📊 Current week data PDA: {}", current_week_data_pda);
     
-    // Criar a instrução com os metas de conta
-    let notify_ix = Instruction {
+    let next_week = current_week + 1;
+    let next_week_bytes = next_week.to_le_bytes();
+    let next_week_data_seeds = &[b"weekly_data".as_ref(), &next_week_bytes];
+    let (next_week_data_pda, _) = Pubkey::find_program_address(next_week_data_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("📊 Next week data PDA: {}", next_week_data_pda);
+    
+    // 6. Criar contas para a instrução
+    let accounts = vec![
+        AccountMeta::new(program_state_pda, false),
+        // Referrer_wallet não é signatário
+        AccountMeta::new(*referrer_wallet, false),
+        AccountMeta::new(user_account_pda, false),
+        AccountMeta::new(current_week_data_pda, false),
+        AccountMeta::new(next_week_data_pda, false),
+        // O programa de matriz como signatário
+        AccountMeta::new(*program_id, true),
+        AccountMeta::new_readonly(solana_program::system_program::id(), false),
+    ];
+    
+    // 7. Usar o discriminador para notify_matrix_completion
+    let instruction = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
-        accounts: vec![
-            AccountMeta::new(program_state_pda, false),
-            AccountMeta::new(*referrer_wallet, true),
-            AccountMeta::new(user_account_pda, false),
-            // Estas duas precisamos derivar mas não passamos as contas diretamente
-            AccountMeta::new_readonly(*program_id, false),
-            AccountMeta::new_readonly(solana_program::system_program::id(), false),
-        ],
+        accounts,
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-    // Criar a transação para a CPI
-    msg!("🚀 Tentando CPI simplificada para o programa de airdrop...");
+    // 8. Coletar as contas necessárias
+    let mut account_infos = Vec::new();
     
-    // Tenta usar o solana_program::program::invoke diretamente
-    solana_program::program::invoke(
-        &notify_ix,
-        remaining_accounts,
+    // Adiciona estado do programa
+    account_infos.push(program_state_account.clone());
+    
+    // Adiciona referrer wallet
+    let referrer_wallet_info = remaining_accounts.iter()
+        .find(|a| a.key() == *referrer_wallet)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Carteira do referenciador não encontrada");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    account_infos.push(referrer_wallet_info.clone());
+    
+    // Adiciona a conta do usuário no programa de airdrop
+    let user_account_info = remaining_accounts.iter()
+        .find(|a| a.key() == user_account_pda)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Conta do usuário no airdrop não encontrada. O usuário deve se registrar primeiro no airdrop.");
+            error!(ErrorCode::UserNotRegisteredInAirdrop)
+        })?;
+    account_infos.push(user_account_info.clone());
+    
+    // Adiciona as contas de dados das semanas
+    let current_week_data_info = remaining_accounts.iter()
+        .find(|a| a.key() == current_week_data_pda)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Dados da semana atual não encontrados");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    account_infos.push(current_week_data_info.clone());
+    
+    let next_week_data_info = remaining_accounts.iter()
+        .find(|a| a.key() == next_week_data_pda)
+        .ok_or_else(|| {
+            msg!("❌ ERRO: Dados da próxima semana não encontrados");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    account_infos.push(next_week_data_info.clone());
+    
+    // Cria AccountInfo para o programa matriz (como signatário)
+    let program_info = AccountInfo {
+        key: program_id,
+        is_signer: true,
+        is_writable: false,
+        lamports: Rc::new(RefCell::new(&mut 0)),
+        data: Rc::new(RefCell::new(&mut [])),
+        owner: &crate::ID,
+        executable: false,
+        rent_epoch: 0,
+    };
+    account_infos.push(program_info);
+    
+    // Adiciona o programa do sistema
+    account_infos.push(system_program.clone());
+    
+    // 9. Invoca a instrução no programa de airdrop
+    msg!("🚀 Invocando programa de airdrop...");
+    invoke(
+        &instruction,
+        &account_infos
     ).map_err(|e| {
         msg!("❌ CPI falhou com erro: {:?}", e);
         error!(ErrorCode::ReferrerPaymentFailed)
     })?;
     
-    msg!("✅ Programa de airdrop notificado com sucesso");
+    msg!("✅ Programa de airdrop notificado com sucesso sobre a conclusão da matriz");
     Ok(())
 }
 
