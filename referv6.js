@@ -1,4 +1,4 @@
-// register-v6.js - Versão Final com Inclusão da Carteira do Referenciador
+// register-v6.js - Versão Final com Inclusão da Carteira do Referenciador e Pré-Criação da Próxima Semana
 const { 
   Connection, 
   Keypair, 
@@ -8,7 +8,8 @@ const {
   ComputeBudgetProgram,
   TransactionInstruction,
   SystemProgram,
-  SYSVAR_RENT_PUBKEY
+  SYSVAR_RENT_PUBKEY,
+  Transaction, // Adicionado para transação legada
 } = require('@solana/web3.js');
 const { AnchorProvider, Program, BN, Wallet, utils } = require('@coral-xyz/anchor');
 const fs = require('fs');
@@ -59,6 +60,9 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xW
 
 // Discriminador correto para a nova instrução notify_matrix_completion
 const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR = Buffer.from([37, 97, 96, 169, 254, 103, 83, 9]);
+
+// Discriminador para a instrução initialize_week no programa de airdrop
+const INITIALIZE_WEEK_DISCRIMINATOR = Buffer.from([83, 114, 214, 129, 9, 7, 76, 219]);
 
 // Função para criar interface de linha de comando
 function createInterface() {
@@ -373,6 +377,84 @@ async function prepareAirdropAccounts(connection, referrerAddress) {
     currentWeekDataInfo,
     nextWeekDataInfo
   };
+}
+
+// Função para criar a conta da próxima semana no programa de airdrop
+async function createNextWeekAccount(connection, walletKeypair, airdropInfo) {
+  console.log("\n🔧 CRIANDO CONTA DA PRÓXIMA SEMANA MANUALMENTE...");
+  
+  const nextWeek = airdropInfo.currentWeek + 1;
+  console.log(`  📅 Criando conta para a semana ${nextWeek}`);
+  
+  // Obter blockhash recente
+  const { blockhash } = await connection.getLatestBlockhash('confirmed');
+  
+  // Criar instrução para inicializar a próxima semana
+  // Dados da instrução (8 bytes de discriminador + 1 byte para a semana)
+  const data = Buffer.alloc(9);
+  INITIALIZE_WEEK_DISCRIMINATOR.copy(data, 0);
+  data.writeUInt8(nextWeek, 8);
+  
+  // Criar a instrução manualmente
+  const initWeekIx = new TransactionInstruction({
+    programId: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
+    keys: [
+      { pubkey: airdropInfo.programStatePda, isSigner: false, isWritable: true },
+      { pubkey: walletKeypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: airdropInfo.nextWeekDataPda, isSigner: false, isWritable: true },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+    ],
+    data: data,
+  });
+  
+  // Adicionar instrução de compute budget para garantir capacidade suficiente
+  const computeUnits = 200_000;
+  const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
+    units: computeUnits
+  });
+  
+  // Criar uma transação legada para compatibilidade
+  const transaction = new Transaction()
+    .add(modifyComputeUnits)
+    .add(initWeekIx);
+  
+  transaction.recentBlockhash = blockhash;
+  transaction.feePayer = walletKeypair.publicKey;
+  
+  // Assinar a transação
+  transaction.sign(walletKeypair);
+  
+  try {
+    // Enviar transação
+    const txid = await connection.sendRawTransaction(transaction.serialize(), {
+      skipPreflight: true,
+      maxRetries: 3
+    });
+    
+    console.log(`  ✅ Transação para criar próxima semana enviada: ${txid}`);
+    console.log(`  🔍 Explorer: https://explorer.solana.com/tx/${txid}?cluster=devnet`);
+    
+    // Verificar confirmação
+    console.log(`  ⏳ Aguardando confirmação da criação da próxima semana...`);
+    const result = await checkSignatureStatus(connection, txid, 30000);
+    
+    if (result.confirmed) {
+      console.log(`  ✅ Conta da próxima semana criada com sucesso!`);
+      // Esperar um pouco para garantir que a rede esteja atualizada
+      await sleep(2000);
+      return true;
+    } else {
+      console.log(`  ❌ Falha ao criar conta da próxima semana: ${result.error}`);
+      return false;
+    }
+  } catch (error) {
+    console.error(`  ❌ Erro ao criar conta da próxima semana:`, error.message);
+    if (error.logs) {
+      console.log("\n  📋 LOGS DE ERRO:");
+      error.logs.forEach((log, i) => console.log(`  ${i}: ${log}`));
+    }
+    return false;
+  }
 }
 
 // Função para criar instrução de notificação de matriz completada
@@ -736,6 +818,44 @@ async function main() {
       
       // Preparar contas do programa de airdrop para o slot 3
       airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
+      
+      // NOVA ETAPA: Pré-criar a conta da próxima semana no airdrop
+      if (!airdropInfo.nextWeekDataInfo) {
+        console.log("\n⚠️ Conta da próxima semana não encontrada, tentando criar...");
+        
+        // Criar a conta da próxima semana
+        const created = await createNextWeekAccount(connection, walletKeypair, airdropInfo);
+        
+        if (created) {
+          console.log("\n✅ Conta da próxima semana criada com sucesso!");
+          // Verificar se a conta foi realmente criada
+          const nextWeekDataInfo = await connection.getAccountInfo(airdropInfo.nextWeekDataPda);
+          if (nextWeekDataInfo) {
+            console.log("✅ Verificação confirmada: Conta da próxima semana encontrada");
+            airdropInfo.nextWeekDataInfo = nextWeekDataInfo;
+          } else {
+            console.log("⚠️ Verificação falhou: Conta da próxima semana não encontrada mesmo após criação");
+          }
+        } else {
+          console.log("\n⚠️ Falha ao criar conta da próxima semana");
+          
+          // Perguntar se deseja continuar mesmo assim
+          const continuePrompt = createInterface();
+          const shouldContinue = await new Promise(resolve => {
+            continuePrompt.question('\nConta da próxima semana não foi criada. Continuar mesmo assim? (S/n): ', answer => {
+              continuePrompt.close();
+              resolve(answer.trim().toLowerCase() !== 'n');
+            });
+          });
+          
+          if (!shouldContinue) {
+            console.log("\n❌ Operação cancelada. Tente novamente ou contate o administrador do programa.");
+            return;
+          }
+          
+          console.log("\n⚠️ Continuando mesmo sem a conta da próxima semana - isso pode falhar!");
+        }
+      }
     }
     
     // Carregar ALT
@@ -850,6 +970,14 @@ async function main() {
       });
       console.log(`  ➕ Referrer Wallet (CRITICAL): ${referrerAddress.toString()}`);
       
+      // ADIÇÃO CRÍTICA: Adicionar também o PDA do referenciador como conta do programa matriz
+      mainRemainingAccounts.push({
+        pubkey: referrerPDA,  // Esta é uma conta que pertence ao programa matriz
+        isWritable: true,
+        isSigner: false,
+      });
+      console.log(`  ➕ Referrer PDA (MATRIX PROGRAM): ${referrerPDA.toString()}`);
+      
       // Adicionar uplines
       mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
     }
@@ -859,7 +987,7 @@ async function main() {
     console.log(`  - Chainlink: 2 contas`);
     
     if (isSlot3) {
-      console.log(`  - Airdrop: 5 contas (incluindo carteira do referenciador)`);
+      console.log(`  - Airdrop: 5 contas (incluindo carteira do referenciador e PDA do programa matriz)`);
       console.log(`  - Uplines: ${uplineAccounts.length} contas (${uplineAccounts.length / 2} uplines)`);
     }
     
