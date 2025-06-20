@@ -250,16 +250,10 @@ fn notify_airdrop_program<'info>(
         })?;
     account_infos.push(next_week_data_info.clone());
     
-    // CORREÇÃO: Adiciona o próprio programa matriz 
-    // Não é possível criar um AccountInfo do zero facilmente, 
-    // então vamos buscar alguma conta que pertence ao programa matriz
-    let matrix_program_info = remaining_accounts.iter()
-        .find(|a| a.owner == program_id)
-        .ok_or_else(|| {
-            msg!("❌ ERRO: Não foi possível encontrar uma conta do programa matriz");
-            error!(ErrorCode::MissingUplineAccount)
-        })?;
-    account_infos.push(matrix_program_info.clone());
+    // MODIFICAÇÃO: Não tentar encontrar o programa matriz, apenas colocar o program_id na instrução
+    // Em vez de usar uma conta do programa, vamos colocar a conta do sistema 
+    // com o metadata correto para o program_id
+    account_infos.push(system_program.clone());
     
     // Adiciona o programa do sistema
     account_infos.push(system_program.clone());
