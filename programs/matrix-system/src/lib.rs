@@ -300,7 +300,23 @@ fn notify_airdrop_program<'info>(
     for (i, acc) in account_infos.iter().enumerate() {
         msg!("  [{}] {} (owner: {})", i, acc.key(), acc.owner);
     }
+      // ========== ADICIONAR ESTE CÓDIGO AQUI ==========
+    // Debug detalhado das contas
+    msg!("🔍 [MATRIX] Debug detalhado das contas:");
+    msg!("  - user_wallet key: {}", user_wallet.key());
+    msg!("  - user_wallet data_len: {}", user_wallet.data_len());
+    msg!("  - user_wallet executable: {}", user_wallet.executable);
+    msg!("  - user_wallet rent_epoch: {}", user_wallet.rent_epoch);
     
+    // Verificar se alguma conta está sendo usada duas vezes
+    use std::collections::HashSet;
+    let mut account_keys = HashSet::new();
+    for (i, acc) in account_infos.iter().enumerate() {
+        if !account_keys.insert(acc.key()) {
+            msg!("⚠️ [MATRIX] AVISO: Conta duplicada detectada na posição {}: {}", i, acc.key());
+        }
+    }
+    // ========== FIM DO CÓDIGO ADICIONAL ==========
     // 8. Executar CPI
     msg!("🚀 [MATRIX] Executando CPI para programa de airdrop...");
     msg!("  - Target program: {}", AIRDROP_PROGRAM_ID);
