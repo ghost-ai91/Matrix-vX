@@ -199,6 +199,13 @@ fn notify_airdrop_program<'info>(
             msg!("❌ ERRO: Carteira do referenciador não encontrada");
             error!(ErrorCode::MissingUplineAccount)
         })?;
+        
+    let user_wallet_info = remaining_accounts.iter()
+    .find(|a| a.key() == user_wallet.key())
+    .ok_or_else(|| {
+        msg!("❌ ERRO: User wallet não encontrado nos remaining_accounts");
+        error!(ErrorCode::MissingUplineAccount)
+    })?;
     
     let user_account_info = remaining_accounts.iter()
         .find(|a| a.key() == user_account_pda)
@@ -244,8 +251,8 @@ let account_infos = vec![
     user_account_info.clone(),
     current_week_data_info.clone(),
     next_week_data_info.clone(),
-    user_wallet.clone(),
-    referrer_wallet_info.clone(),  // Usar referrer_wallet_info ao invés de system_program
+    user_wallet_info.clone(),    // MUDE AQUI: use user_wallet_info ao invés de user_wallet
+    system_program.clone(),
     system_program.clone(),
 ];
     
