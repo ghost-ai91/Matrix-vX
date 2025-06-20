@@ -136,17 +136,16 @@ fn user_exists_in_airdrop<'info>(
     false
 }
 
-// Função corrigida para notificar programa de airdrop
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
     program_id: &Pubkey,
     remaining_accounts: &[AccountInfo<'info>],
     system_program: &AccountInfo<'info>,
-    user_wallet: &AccountInfo<'info>,  // NOVO: adicionar user_wallet como parâmetro
+    user_wallet: &AccountInfo<'info>,  // Já recebe como AccountInfo
 ) -> Result<()> {
     use solana_program::instruction::Instruction;
 
-        // No início da função notify_airdrop_program, adicione:
+    // No início da função notify_airdrop_program, adicione:
     msg!("📋 Remaining accounts count: {}", remaining_accounts.len());
     for (i, acc) in remaining_accounts.iter().enumerate() {
         msg!("  [{}] {}", i, acc.key());
@@ -199,13 +198,9 @@ fn notify_airdrop_program<'info>(
             msg!("❌ ERRO: Carteira do referenciador não encontrada");
             error!(ErrorCode::MissingUplineAccount)
         })?;
-        
-    let user_wallet_info = remaining_accounts.iter()
-    .find(|a| a.key() == user_wallet.key())
-    .ok_or_else(|| {
-        msg!("❌ ERRO: User wallet não encontrado nos remaining_accounts");
-        error!(ErrorCode::MissingUplineAccount)
-    })?;
+    
+    // NÃO BUSCAR user_wallet_info nos remaining_accounts!
+    // Usar diretamente o parâmetro user_wallet
     
     let user_account_info = remaining_accounts.iter()
         .find(|a| a.key() == user_account_pda)
@@ -228,7 +223,7 @@ fn notify_airdrop_program<'info>(
             error!(ErrorCode::MissingUplineAccount)
         })?;
     
-    // 6. Cria instrução para o programa de airdrop - CORRIGIDA
+    // 6. Cria instrução para o programa de airdrop
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
         accounts: vec![
@@ -237,24 +232,24 @@ fn notify_airdrop_program<'info>(
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), true),     // CORRIGIDO: user_wallet como signer
-            AccountMeta::new(*program_id, false),          // CORRIGIDO: programa não é signer
+            AccountMeta::new(user_wallet.key(), true),     // user_wallet como signer
+            AccountMeta::new(*program_id, false),          // programa não é signer
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
         ],
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-// 7. Preparar contas para a CPI
-let account_infos = vec![
-    program_state_account.clone(),
-    referrer_wallet_info.clone(),
-    user_account_info.clone(),
-    current_week_data_info.clone(),
-    next_week_data_info.clone(),
-    user_wallet_info.clone(),    // MUDE AQUI: use user_wallet_info ao invés de user_wallet
-    system_program.clone(),
-    system_program.clone(),
-];
+    // 7. Preparar contas para a CPI
+    let account_infos = vec![
+        program_state_account.clone(),
+        referrer_wallet_info.clone(),
+        user_account_info.clone(),
+        current_week_data_info.clone(),
+        next_week_data_info.clone(),
+        user_wallet.clone(),        // USAR DIRETAMENTE O PARÂMETRO
+        system_program.clone(),
+        system_program.clone(),
+    ];
     
     // 8. Executa a CPI
     msg!("🚀 Invocando programa de airdrop...");
