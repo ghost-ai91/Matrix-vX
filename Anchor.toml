@@ -3,7 +3,7 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-matrix_system = "3saryRQxKxVPpnDhSL6cPCMGuWvq7c6bXKZgAXkWyfYf"
+matrix_system = "273d3yYAozJkMn2qT8afudNiVSF4rpP3zUCKwfw5tJPo"
 
 [registry]
 url = "https://api.apr.dev"
