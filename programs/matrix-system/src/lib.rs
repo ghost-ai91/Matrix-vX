@@ -260,7 +260,7 @@ fn notify_airdrop_program<'info>(
     msg!("🔍 [MATRIX] Procurando instructions sysvar...");
     
     let instructions_sysvar = remaining_accounts.iter()
-        .find(|a| a.key() == &solana_program::sysvar::instructions::ID)
+        .find(|a| a.key() == solana_program::sysvar::instructions::ID)
         .ok_or_else(|| {
             msg!("❌ [MATRIX] Instructions sysvar não encontrado nos remaining_accounts!");
             msg!("     O cliente deve incluir o instructions sysvar nos remaining_accounts");
