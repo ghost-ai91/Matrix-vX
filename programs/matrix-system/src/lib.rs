@@ -140,7 +140,7 @@ fn user_exists_in_airdrop<'info>(
 
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
-    program_id: &Pubkey,
+    _program_id: &Pubkey,
     remaining_accounts: &[AccountInfo<'info>],
     system_program: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
