@@ -753,13 +753,21 @@ async function main() {
       });
       console.log(`  ➕ Referrer Wallet: ${referrerAddress.toString()}`);
       
-      // IMPORTANTE: Adicionar Instructions Sysvar em vez do matrix program
-      mainRemainingAccounts.push({
-        pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
-        isWritable: false,
-        isSigner: false,
-      });
-      console.log(`  ➕ Instructions Sysvar: ${SYSVAR_INSTRUCTIONS_PUBKEY.toString()}`);
+    // ADICIONAR ANTES DO instructions_sysvar:
+    mainRemainingAccounts.push({
+      pubkey: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
+      isWritable: false,
+      isSigner: false,
+    });
+    console.log(`  ➕ Airdrop Program ID: ${VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID.toString()}`);
+
+    // Depois adicionar o instructions_sysvar
+    mainRemainingAccounts.push({
+      pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
+      isWritable: false,
+      isSigner: false,
+    });
+    console.log(`  ➕ Instructions Sysvar: ${SYSVAR_INSTRUCTIONS_PUBKEY.toString()}`);
       
       // Adicionar uplines
       mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
