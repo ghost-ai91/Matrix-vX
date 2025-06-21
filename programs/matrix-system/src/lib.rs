@@ -146,6 +146,7 @@ fn notify_airdrop_program<'info>(
 
     msg!("🔍 [MATRIX] notify_airdrop_program START");
     msg!("  referrer_wallet: {}", referrer_wallet);
+    msg!("  user_wallet: {}", user_wallet.key());
     msg!("  remaining_accounts count: {}", remaining_accounts.len());
     
     // Verificar se o usuário existe no programa de airdrop
@@ -157,9 +158,11 @@ fn notify_airdrop_program<'info>(
     // 1. Derivar as PDAs necessárias
     let state_seeds = &[b"program_state".as_ref()];
     let (program_state_pda, _) = Pubkey::find_program_address(state_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  PDA program_state: {}", program_state_pda);
     
     let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
     let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  PDA user_account: {}", user_account_pda);
     
     // 2. Encontrar contas nos remaining_accounts
     let program_state_account = remaining_accounts.iter()
@@ -168,6 +171,7 @@ fn notify_airdrop_program<'info>(
             msg!("❌ program_state_account não encontrado!");
             error!(ErrorCode::MissingUplineAccount)
         })?;
+    msg!("✅ Found program_state at: {}", program_state_account.key());
     
     // 3. Obter semana atual
     let data_borrow = program_state_account.data.borrow();
@@ -183,28 +187,46 @@ fn notify_airdrop_program<'info>(
     let week_bytes = current_week.to_le_bytes();
     let current_week_data_seeds = &[b"weekly_data".as_ref(), &week_bytes];
     let (current_week_data_pda, _) = Pubkey::find_program_address(current_week_data_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  PDA current_week_data: {}", current_week_data_pda);
     
     let next_week = current_week + 1;
     let next_week_bytes = next_week.to_le_bytes();
     let next_week_data_seeds = &[b"weekly_data".as_ref(), &next_week_bytes];
     let (next_week_data_pda, _) = Pubkey::find_program_address(next_week_data_seeds, &AIRDROP_PROGRAM_ID);
+    msg!("  PDA next_week_data: {}", next_week_data_pda);
     
     // 5. Verificar se contas existem
     let referrer_wallet_info = remaining_accounts.iter()
         .find(|a| a.key() == *referrer_wallet)
-        .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
+        .ok_or_else(|| {
+            msg!("❌ referrer_wallet não encontrado: {}", referrer_wallet);
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ Found referrer_wallet at: {}", referrer_wallet_info.key());
     
     let user_account_info = remaining_accounts.iter()
         .find(|a| a.key() == user_account_pda)
-        .ok_or_else(|| error!(ErrorCode::UserNotRegisteredInAirdrop))?;
+        .ok_or_else(|| {
+            msg!("❌ user_account não encontrado: {}", user_account_pda);
+            error!(ErrorCode::UserNotRegisteredInAirdrop)
+        })?;
+    msg!("✅ Found user_account at: {}", user_account_info.key());
     
     let current_week_data_info = remaining_accounts.iter()
         .find(|a| a.key() == current_week_data_pda)
-        .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
+        .ok_or_else(|| {
+            msg!("❌ current_week_data não encontrado: {}", current_week_data_pda);
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ Found current_week_data at: {}", current_week_data_info.key());
     
     let next_week_data_info = remaining_accounts.iter()
         .find(|a| a.key() == next_week_data_pda)
-        .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
+        .ok_or_else(|| {
+            msg!("❌ next_week_data não encontrado: {}", next_week_data_pda);
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ Found next_week_data at: {}", next_week_data_info.key());
     
     // 6. Procurar o instructions sysvar
     let instructions_sysvar = remaining_accounts.iter()
@@ -213,9 +235,10 @@ fn notify_airdrop_program<'info>(
             msg!("❌ Instructions sysvar não encontrado!");
             error!(ErrorCode::MissingUplineAccount)
         })?;
+    msg!("✅ Found instructions_sysvar at: {}", instructions_sysvar.key());
     
     // 7. Criar instrução
-    msg!("📋 Criando instrução CPI com 8 contas:");
+    msg!("📋 Criando instrução CPI:");
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
         accounts: vec![
@@ -224,15 +247,23 @@ fn notify_airdrop_program<'info>(
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), true), // IMPORTANTE: true para signer
+            AccountMeta::new(user_wallet.key(), true), // signer = true
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false),
         ],
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-    // Log apenas o número de contas
-    msg!("  Total accounts in instruction: {}", ix.accounts.len());
+    // Log detalhado de cada conta na instrução
+    msg!("  Instruction accounts detail:");
+    msg!("  [0] program_state: {}", program_state_pda);
+    msg!("  [1] referrer_wallet: {}", *referrer_wallet);
+    msg!("  [2] user_account: {}", user_account_pda);
+    msg!("  [3] current_week_data: {}", current_week_data_pda);
+    msg!("  [4] next_week_data: {}", next_week_data_pda);
+    msg!("  [5] user_wallet: {} (signer: true)", user_wallet.key());
+    msg!("  [6] system_program: {}", solana_program::system_program::id());
+    msg!("  [7] instructions_sysvar: {}", solana_program::sysvar::instructions::ID);
     
     // 8. Preparar contas para CPI
     let account_infos = vec![
@@ -246,10 +277,13 @@ fn notify_airdrop_program<'info>(
         instructions_sysvar.clone(),
     ];
     
-    msg!("  Total account_infos for CPI: {}", account_infos.len());
+    msg!("  Account infos detail:");
+    for (i, acc) in account_infos.iter().enumerate() {
+        msg!("  [{}] {}", i, acc.key());
+    }
     
     // 9. Executar CPI
-    msg!("🚀 Executando CPI...");
+    msg!("🚀 Executando CPI para programa: {}", AIRDROP_PROGRAM_ID);
     
     invoke(
         &ix,
