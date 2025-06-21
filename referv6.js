@@ -17,6 +17,8 @@ const os = require('os');
 
 // Endereços verificados (igual ao contrato)
 const VERIFIED_ADDRESSES = {
+  
+  SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey('Sysvar1nstructions1111111111111111111111111');
   // Pool Meteora
   POOL_ADDRESS: new PublicKey("FrQ5KsAgjCe3FFg6ZENri8feDft54tgnATxyffcasuxU"),
   
@@ -750,13 +752,13 @@ if (isSlot3 && airdropInfo) {
   });
   console.log(`  ➕ Referrer Wallet: ${referrerAddress.toString()}`);
   
-  // NOVO: Adicionar o próprio programa matrix aos remaining_accounts
+  // IMPORTANTE: Adicionar Instructions Sysvar em vez do matrix program
   mainRemainingAccounts.push({
-      pubkey: MATRIX_PROGRAM_ID,
+      pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
       isWritable: false,
       isSigner: false,
   });
-  console.log(`  ➕ Matrix Program ID: ${MATRIX_PROGRAM_ID.toString()}`);
+  console.log(`  ➕ Instructions Sysvar: ${SYSVAR_INSTRUCTIONS_PUBKEY.toString()}`);
   
   // Adicionar uplines
   mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];

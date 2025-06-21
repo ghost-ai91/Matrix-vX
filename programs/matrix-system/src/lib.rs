@@ -256,25 +256,20 @@ fn notify_airdrop_program<'info>(
         })?;
     msg!("✅ [MATRIX] next_week_data_info encontrado");
     
-    // 6. Procurar o programa matrix nos remaining_accounts
-    msg!("🔍 [MATRIX] Procurando matrix program info...");
+    // 6. IMPORTANTE: Procurar o instructions sysvar nos remaining_accounts
+    msg!("🔍 [MATRIX] Procurando instructions sysvar...");
     
-    let matrix_program_info = remaining_accounts.iter()
-        .find(|a| a.key() == *program_id)
+    let instructions_sysvar = remaining_accounts.iter()
+        .find(|a| a.key() == &solana_program::sysvar::instructions::ID)
         .ok_or_else(|| {
-            msg!("❌ [MATRIX] Matrix program não encontrado nos remaining_accounts!");
-            msg!("     O cliente deve incluir o programa matrix nos remaining_accounts");
+            msg!("❌ [MATRIX] Instructions sysvar não encontrado nos remaining_accounts!");
+            msg!("     O cliente deve incluir o instructions sysvar nos remaining_accounts");
+            msg!("     Sysvar ID esperado: {}", solana_program::sysvar::instructions::ID);
             error!(ErrorCode::MissingUplineAccount)
         })?;
-    msg!("✅ [MATRIX] Matrix program encontrado nos remaining_accounts");
+    msg!("✅ [MATRIX] Instructions sysvar encontrado nos remaining_accounts");
     
-
-    // 7. Criar instrução
-msg!("🔍 [MATRIX] Criando instrução CPI...");
-msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE LOG
-
-
-    // 7. Criar instrução
+    // 7. Criar instrução - SEM matrix_program, COM instructions_sysvar
     msg!("🔍 [MATRIX] Criando instrução CPI...");
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
@@ -284,9 +279,9 @@ msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE 
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), false),
-            AccountMeta::new(*program_id, false),
+            AccountMeta::new(user_wallet.key(), true), // IMPORTANTE: true para signer
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
+            AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false), // Instructions sysvar
         ],
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
@@ -296,7 +291,7 @@ msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE 
         msg!("  [{}] {} (signer: {}, writable: {})", i, acc.pubkey, acc.is_signer, acc.is_writable);
     }
     
-    // 8. Preparar contas para CPI
+    // 8. Preparar contas para CPI - incluir instructions sysvar
     msg!("🔍 [MATRIX] Preparando account_infos para CPI...");
     
     let account_infos = vec![
@@ -306,8 +301,8 @@ msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE 
         current_week_data_info.clone(),
         next_week_data_info.clone(),
         user_wallet.clone(),
-        matrix_program_info.clone(),  // Usar a conta encontrada
         system_program.clone(),
+        instructions_sysvar.clone(), // Adicionar instructions sysvar
     ];
     
     msg!("📋 [MATRIX] Account infos preparados:");
@@ -321,6 +316,8 @@ msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE 
     msg!("  - user_wallet data_len: {}", user_wallet.data_len());
     msg!("  - user_wallet executable: {}", user_wallet.executable);
     msg!("  - user_wallet rent_epoch: {}", user_wallet.rent_epoch);
+    msg!("  - instructions_sysvar key: {}", instructions_sysvar.key());
+    msg!("  - instructions_sysvar owner: {}", instructions_sysvar.owner);
     
     // Verificar duplicatas
     use std::collections::HashSet;
@@ -334,6 +331,7 @@ msg!("  DEBUG: user_wallet será marcado como signer: false"); // ADICIONE ESTE 
     // 9. Executar CPI
     msg!("🚀 [MATRIX] Executando CPI para programa de airdrop...");
     msg!("  - Target program: {}", AIRDROP_PROGRAM_ID);
+    msg!("  - Total accounts: {}", account_infos.len());
     
     invoke(
         &ix,
