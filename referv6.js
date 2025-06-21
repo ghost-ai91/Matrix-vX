@@ -48,7 +48,7 @@ const VERIFIED_ADDRESSES = {
   SOL_USD_FEED: new PublicKey("99B2bTijsU6f1GCT73HmdR7HCFFjGMBcPZY6jZ96ynrR"),
   
   // Programa de Airdrop
-  AIRDROP_PROGRAM_ID: new PublicKey("ECeQesnYMdg2P3CeTJL6D7W75LcyuLhw4VJPFg4wCSuB"),
+  AIRDROP_PROGRAM_ID: new PublicKey("2uYNfbV4n9Y65TT2RsYjujCRYgtkAzuhDeS8EGqrfASK"),
 };
 
 // Programas do sistema

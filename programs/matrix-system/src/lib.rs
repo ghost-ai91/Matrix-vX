@@ -90,7 +90,7 @@ pub mod admin_addresses {
 pub mod airdrop_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("AKdkip1FuPsDGvFbofDNXW7teZzHk57gtsbtrpb2s2Qm");
+    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("2uYNfbV4n9Y65TT2RsYjujCRYgtkAzuhDeS8EGqrfASK");
 }
 
 // Constants for the airdrop program
