@@ -1,107 +1,102 @@
 [
-
-  solana transfer C7krhCrrXAmQW8vfMSWfPWCbgu2eJC62R8xTuoCZLdDY 0.20 --allow-unfunded-recipient
-
-
-  node referv6.js ./carteiras/carteira3.json ./matriz-config.json QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv 5EzjPd9ZKqHFSZ9d4rND3X3uwXSVxT65DSkerK6jHaw2
   {
     "index": 1,
-    "publicKey": "HJiNLd2uw3DK635MNKydPvkJq56FgZsX2Cow3B7wR2g5",
+    "publicKey": "F1maXxT843wAcerAUmJLgtoNHfiy3yzyMZRTUUqmzkEh",
     "filePath": "carteiras/carteira1.json"
   },
   {
     "index": 2,
-    "publicKey": "CqvnrsAYbUvZLdBHcKpcCQfQf35vxn5psNBjGaHQ2t8h",
+    "publicKey": "Fom2X4Gzk6SBMwjo169BShF82jsJvHgooznsMUiPDf1F",
     "filePath": "carteiras/carteira2.json"
   },
   {
     "index": 3,
-    "publicKey": "C7krhCrrXAmQW8vfMSWfPWCbgu2eJC62R8xTuoCZLdDY",
+    "publicKey": "pWdxo2U1hmu8wvmzq62Gz569z31WRQJJoNt6X2QKkpZ",
     "filePath": "carteiras/carteira3.json"
   },
   {
     "index": 4,
-    "publicKey": "F2cp3mbk8HvTZFtrwmixpKi3wzRV8FnRncwo1wqhHy7N",
+    "publicKey": "HxkoCLbndvFbJNT69CvUJ8uQKPz61VpzEk4ZcLmb8DoU",
     "filePath": "carteiras/carteira4.json"
   },
   {
     "index": 5,
-    "publicKey": "31ph7y29jHfHEvqvVjLe7C9YJVtAbddPF25XVrFPUp9t",
+    "publicKey": "HL8mWQkHgz6nuvnYJQwZJUx6hwPD3WgyDzSKfoESPFQR",
     "filePath": "carteiras/carteira5.json"
   },
   {
     "index": 6,
-    "publicKey": "4kuUUSAJtYnTi5tghrYP9LPUKyJArEty5f56bUvJQzAk",
+    "publicKey": "3Xi3r4kX3gTLPQM1NzvZYRhspJaRx2DAWM7KxWRn4cwQ",
     "filePath": "carteiras/carteira6.json"
   },
   {
     "index": 7,
-    "publicKey": "2tXyPekV5yBoot6uv9tZpB52BUupnrUu4C5GkHedPVtk",
+    "publicKey": "CU5hp37t34u3RWLBT2TouZbgv6v91x97W2oTudF3UNZv",
     "filePath": "carteiras/carteira7.json"
   },
   {
     "index": 8,
-    "publicKey": "5UKbYPktUvUEc5GLD8vaQnhVqdm15txu81VAq3nHE3ZF",
+    "publicKey": "HfG6hvU7YkBjj6PTDfFVA4gfSUsKrCRo21uBPZCGUZf",
     "filePath": "carteiras/carteira8.json"
   },
   {
     "index": 9,
-    "publicKey": "Ao3nrrEohHXGeXmBJMQufmRFGfX3JCcY9KbJNjn42xtq",
+    "publicKey": "5U4H1R44NFKfiQooC5rUsK6XPGDikEQWAmDWfUiLSrj1",
     "filePath": "carteiras/carteira9.json"
   },
   {
     "index": 10,
-    "publicKey": "Ej39WuakYdgeiF9FeCQBaSchXDyAxRs2XKM9WHqQ2c2a",
+    "publicKey": "5UYY528y9YHTLj36u7Dtnq5fvKeXTzmJRpBL1Ad9Gqjs",
     "filePath": "carteiras/carteira10.json"
   },
   {
     "index": 11,
-    "publicKey": "FZUyqm3WTr1vK7rdr8DqaJ5CHXLY9WW3TeAovAHi7u6V",
+    "publicKey": "BJ38B1C6wzUafRK3Ki1SpVGzeNrzfPjeZG2Wgz92d6gF",
     "filePath": "carteiras/carteira11.json"
   },
   {
     "index": 12,
-    "publicKey": "68rhmUqmSmCpLvSpc5BewHKFHDdZj4sCEeve1SEaL8hz",
+    "publicKey": "71CAMxut58roiWE2EAZPAZ98rwH8SqhRwTuvXAiX3RXD",
     "filePath": "carteiras/carteira12.json"
   },
   {
     "index": 13,
-    "publicKey": "DqvsVfoKrRpojF9dATXvezqsWRSjs73HDnDH5ENoG9K3",
+    "publicKey": "DwgRWSnnP8YsknpcLcx2fiFLYdzxvK2VYrAC9Jfm91gf",
     "filePath": "carteiras/carteira13.json"
   },
   {
     "index": 14,
-    "publicKey": "HRmoNLAaJMLxDFRUeKhkjYSMQxQWfCvn6wSMVwjqxk8g",
+    "publicKey": "4PmAyQPwtmyGqDiFuaWiFEDrQa5hKhfry6TEBUBe4NHk",
     "filePath": "carteiras/carteira14.json"
   },
   {
     "index": 15,
-    "publicKey": "8BZpgUUa9j6fxkG1RmsCLZxnAvugWrib6vQEjNuC5zHY",
+    "publicKey": "9SwUmz3VeDvvNUNNxpVtD58Qm18Mv1SSzwb7CmZhPD5T",
     "filePath": "carteiras/carteira15.json"
   },
   {
     "index": 16,
-    "publicKey": "7ppXM15NXkHFcwGHXRogFMdvCYbKAmzYTFpRqZ8Xp6J9",
+    "publicKey": "37sWf8BysQGxVn8zmixQMbgL4xiBFnAtbauJp4Ecy2gd",
     "filePath": "carteiras/carteira16.json"
   },
   {
     "index": 17,
-    "publicKey": "CG1Ld2jT3G3otJo6pcSS4StDyZoSU3HvEgRFgMd8SVAS",
+    "publicKey": "AAu6muA3YuJBGKYkiQSVpYReEHbXdD1QmraZmbgnR9nY",
     "filePath": "carteiras/carteira17.json"
   },
   {
     "index": 18,
-    "publicKey": "9GnMKDGNYJkNq1BNgDwz7ewhiwXgcsikzS7YfXYBFhLh",
+    "publicKey": "AQqruVfmsmTxiJ7k8cbbx8jSuLohq5HB14nnrWXfVSqE",
     "filePath": "carteiras/carteira18.json"
   },
   {
     "index": 19,
-    "publicKey": "1ySQmujHEHbTV9HBD1tDeNMbW8UMG6AybgVdmu6kV7j",
+    "publicKey": "Bq7fV8qvvXtWXY8DoMUJw6EorPWWiS5oqri5VnhbrcRy",
     "filePath": "carteiras/carteira19.json"
   },
   {
     "index": 20,
-    "publicKey": "6UwxGzsVmL6pQifwRsERJkFbFcyNoV2nebUZQzvLAKLd",
+    "publicKey": "4AJPh7rVDRRxuYUzZG89oYmNx5r6G36ZSmDk6172CZZD",
     "filePath": "carteiras/carteira20.json"
   }
 ]
