@@ -1,4 +1,4 @@
-// register-v6.js - Versão Final com Argumentos de Linha de Comando
+// register-v6.js - Versão Final Corrigida
 const { 
   Connection, 
   Keypair, 
@@ -15,10 +15,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+// Definir SYSVAR_INSTRUCTIONS_PUBKEY fora do objeto
+const SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey('Sysvar1nstructions1111111111111111111111111');
+
 // Endereços verificados (igual ao contrato)
 const VERIFIED_ADDRESSES = {
-  
-  SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey('Sysvar1nstructions1111111111111111111111111');
   // Pool Meteora
   POOL_ADDRESS: new PublicKey("FrQ5KsAgjCe3FFg6ZENri8feDft54tgnATxyffcasuxU"),
   
@@ -49,7 +50,7 @@ const VERIFIED_ADDRESSES = {
   CHAINLINK_PROGRAM: new PublicKey("HEvSKofvBgfaexv23kMabbYqxasxU3mQ4ibBMEmJWHny"),
   SOL_USD_FEED: new PublicKey("99B2bTijsU6f1GCT73HmdR7HCFFjGMBcPZY6jZ96ynrR"),
   
-  // Programa de Airdrop
+  // Programa de Airdrop - CORRIGIDO
   AIRDROP_PROGRAM_ID: new PublicKey("2uYNfbV4n9Y65TT2RsYjujCRYgtkAzuhDeS8EGqrfASK"),
 };
 
@@ -60,6 +61,7 @@ const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xW
 
 // Discriminador correto para a nova instrução notify_matrix_completion
 const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR = Buffer.from([88, 30, 2, 65, 55, 218, 137, 194]);
+
 // Função para dormir
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -210,8 +212,8 @@ async function registerUserInAirdrop(connection, walletKeypair) {
   });
   instructions.push(setPriority);
   
-  // Criar dados da instrução (discriminador para register_user)
-  const registerUserDiscriminator = Buffer.from([108, 246, 240, 103, 23, 36, 111, 191]);
+  // Criar dados da instrução (discriminador CORRIGIDO para register_user)
+  const registerUserDiscriminator = Buffer.from([2, 241, 150, 223, 99, 214, 116, 97]);
   
   // Criar a instrução de registro
   const registerInstruction = new TransactionInstruction({
@@ -711,65 +713,64 @@ async function main() {
     // Construir remaining_accounts que inclui contas do airdrop se for slot 3
     let mainRemainingAccounts = [...vaultAAccounts, ...chainlinkAccounts];
     
-// No arquivo register-v6.js, após preparar as contas do airdrop (linha ~1040)
-
-if (isSlot3 && airdropInfo) {
-  console.log("\n🔄 ADICIONANDO CONTAS DO AIRDROP AOS REMAINING ACCOUNTS");
-  
-  // Adicionar contas do programa de airdrop
-  mainRemainingAccounts.push({
-      pubkey: airdropInfo.programStatePda,
-      isWritable: true,
-      isSigner: false,
-  });
-  console.log(`  ➕ Program State PDA: ${airdropInfo.programStatePda.toString()}`);
-  
-  mainRemainingAccounts.push({
-      pubkey: airdropInfo.userAccountPda,
-      isWritable: true,
-      isSigner: false,
-  });
-  console.log(`  ➕ User Account PDA (AIRDROP): ${airdropInfo.userAccountPda.toString()}`);
-  
-  mainRemainingAccounts.push({
-      pubkey: airdropInfo.currentWeekDataPda,
-      isWritable: true,
-      isSigner: false,
-  });
-  console.log(`  ➕ Current Week Data PDA: ${airdropInfo.currentWeekDataPda.toString()}`);
-  
-  mainRemainingAccounts.push({
-      pubkey: airdropInfo.nextWeekDataPda,
-      isWritable: true,
-      isSigner: false,
-  });
-  console.log(`  ➕ Next Week Data PDA: ${airdropInfo.nextWeekDataPda.toString()}`);
-  
-  mainRemainingAccounts.push({
-      pubkey: referrerAddress,
-      isWritable: true,
-      isSigner: false,
-  });
-  console.log(`  ➕ Referrer Wallet: ${referrerAddress.toString()}`);
-  
-  // IMPORTANTE: Adicionar Instructions Sysvar em vez do matrix program
-  mainRemainingAccounts.push({
-      pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
-      isWritable: false,
-      isSigner: false,
-  });
-  console.log(`  ➕ Instructions Sysvar: ${SYSVAR_INSTRUCTIONS_PUBKEY.toString()}`);
-  
-  // Adicionar uplines
-  mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
-}
+    // No arquivo register-v6.js, após preparar as contas do airdrop
+    if (isSlot3 && airdropInfo) {
+      console.log("\n🔄 ADICIONANDO CONTAS DO AIRDROP AOS REMAINING ACCOUNTS");
+      
+      // Adicionar contas do programa de airdrop
+      mainRemainingAccounts.push({
+        pubkey: airdropInfo.programStatePda,
+        isWritable: true,
+        isSigner: false,
+      });
+      console.log(`  ➕ Program State PDA: ${airdropInfo.programStatePda.toString()}`);
+      
+      mainRemainingAccounts.push({
+        pubkey: airdropInfo.userAccountPda,
+        isWritable: true,
+        isSigner: false,
+      });
+      console.log(`  ➕ User Account PDA (AIRDROP): ${airdropInfo.userAccountPda.toString()}`);
+      
+      mainRemainingAccounts.push({
+        pubkey: airdropInfo.currentWeekDataPda,
+        isWritable: true,
+        isSigner: false,
+      });
+      console.log(`  ➕ Current Week Data PDA: ${airdropInfo.currentWeekDataPda.toString()}`);
+      
+      mainRemainingAccounts.push({
+        pubkey: airdropInfo.nextWeekDataPda,
+        isWritable: true,
+        isSigner: false,
+      });
+      console.log(`  ➕ Next Week Data PDA: ${airdropInfo.nextWeekDataPda.toString()}`);
+      
+      mainRemainingAccounts.push({
+        pubkey: referrerAddress,
+        isWritable: true,
+        isSigner: false,
+      });
+      console.log(`  ➕ Referrer Wallet: ${referrerAddress.toString()}`);
+      
+      // IMPORTANTE: Adicionar Instructions Sysvar em vez do matrix program
+      mainRemainingAccounts.push({
+        pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
+        isWritable: false,
+        isSigner: false,
+      });
+      console.log(`  ➕ Instructions Sysvar: ${SYSVAR_INSTRUCTIONS_PUBKEY.toString()}`);
+      
+      // Adicionar uplines
+      mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
+    }
     
     console.log(`\n📊 RESUMO DE CONTAS:`);
     console.log(`  - Vault A: 4 contas`);
     console.log(`  - Chainlink: 2 contas`);
     
     if (isSlot3) {
-      console.log(`  - Airdrop: 5 contas (incluindo carteira do referenciador)`);
+      console.log(`  - Airdrop: 6 contas (incluindo instructions sysvar)`);
       console.log(`  - Uplines: ${uplineAccounts.length} contas (${uplineAccounts.length / 2} uplines)`);
     }
     
