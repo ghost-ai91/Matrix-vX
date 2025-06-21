@@ -237,7 +237,21 @@ fn notify_airdrop_program<'info>(
         })?;
     msg!("✅ Found instructions_sysvar at: {}", instructions_sysvar.key());
     
-    // 7. Criar instrução
+    // 7. CRÍTICO: Procurar o programa Airdrop
+    let airdrop_program_account = remaining_accounts.iter()
+        .find(|a| a.key() == AIRDROP_PROGRAM_ID)
+        .ok_or_else(|| {
+            msg!("❌ Programa Airdrop não encontrado nos remaining_accounts!");
+            msg!("  Procurando por: {}", AIRDROP_PROGRAM_ID);
+            msg!("  Contas disponíveis:");
+            for (i, acc) in remaining_accounts.iter().enumerate() {
+                msg!("    [{}] {}", i, acc.key());
+            }
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    msg!("✅ Found airdrop program at: {}", airdrop_program_account.key());
+    
+    // 8. Criar instrução
     msg!("📋 Criando instrução CPI:");
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
@@ -265,7 +279,7 @@ fn notify_airdrop_program<'info>(
     msg!("  [6] system_program: {}", solana_program::system_program::id());
     msg!("  [7] instructions_sysvar: {}", solana_program::sysvar::instructions::ID);
     
-    // 8. Preparar contas para CPI
+    // 9. Preparar contas para CPI - INCLUINDO O PROGRAMA
     let account_infos = vec![
         program_state_account.clone(),
         referrer_wallet_info.clone(),
@@ -275,14 +289,19 @@ fn notify_airdrop_program<'info>(
         user_wallet.clone(),
         system_program.clone(),
         instructions_sysvar.clone(),
+        airdrop_program_account.clone(), // CRÍTICO: ADICIONAR O PROGRAMA
     ];
     
-    msg!("  Account infos detail:");
+    msg!("  Account infos detail (com programa):");
     for (i, acc) in account_infos.iter().enumerate() {
-        msg!("  [{}] {}", i, acc.key());
+        msg!("  [{}] {} {}", 
+            i, 
+            acc.key(), 
+            if i == 8 { "(AIRDROP PROGRAM)" } else { "" }
+        );
     }
     
-    // 9. Executar CPI
+    // 10. Executar CPI
     msg!("🚀 Executando CPI para programa: {}", AIRDROP_PROGRAM_ID);
     
     invoke(
