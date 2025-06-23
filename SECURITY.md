@@ -41,7 +41,7 @@ A vulnerability is eligible for reward if:
 
 ## Scope
 
-This security policy covers the DONUT Referral Matrix System smart contract deployed at `273d3yYAozJkMn2qT8afudNiVSF4rpP3zUCKwfw5tJPo`.
+This security policy covers the DONUT Referral Matrix System smart contract deployed at `7fNNaCQKMqc3gEi6njNkLHCcZoGCdnoLKtyGGUnPCjVT`.
 
 ## Out of Scope
 
