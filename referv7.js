@@ -441,7 +441,7 @@ async function prepareAirdropAccounts(connection, referrerAddress) {
 
 // Função principal
 async function main() {
-  console.log("\n🚀 REGISTER V6 - VERSÃO COM ARGUMENTOS CLI 🚀");
+  console.log("\n🚀 REGISTER V7 🚀");
   console.log("===========================================");
   
   // Processar argumentos da linha de comando
