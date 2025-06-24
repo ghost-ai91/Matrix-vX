@@ -15,7 +15,7 @@ const path = require('path');
 
 // Receber parâmetros da linha de comando
 const args = process.argv.slice(2);
-const walletPath = args[0] || '/Users/dark/.config/solana/id.json';
+const walletPath = args[0] || './carteiras/carteira15.jsonn';
 const configPath = args[1] || './matriz-config.json';
 
 // Função para dormir

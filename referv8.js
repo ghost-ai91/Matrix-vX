@@ -1,4 +1,4 @@
-// register-v6.js - Versão Final Corrigida
+// register-v9.js - Versão com ALT corrigida
 const { 
     Connection, 
     Keypair, 
@@ -8,17 +8,17 @@ const {
     ComputeBudgetProgram,
     TransactionInstruction,
     SystemProgram,
-    SYSVAR_RENT_PUBKEY
+    SYSVAR_RENT_PUBKEY,
+    AddressLookupTableProgram,
+    Transaction
   } = require('@solana/web3.js');
-  const { AnchorProvider, Program, BN, Wallet, utils } = require('@coral-xyz/anchor');
+  const { AnchorProvider, Program, BN, Wallet } = require('@coral-xyz/anchor');
   const fs = require('fs');
-  const path = require('path');
-  const os = require('os');
   
-  // Definir SYSVAR_INSTRUCTIONS_PUBKEY fora do objeto
+  // Definir SYSVAR_INSTRUCTIONS_PUBKEY
   const SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey('Sysvar1nstructions1111111111111111111111111');
   
-  // Endereços verificados (igual ao contrato)
+  // Endereços verificados
   const VERIFIED_ADDRESSES = {
     // Pool Meteora
     POOL_ADDRESS: new PublicKey("FrQ5KsAgjCe3FFg6ZENri8feDft54tgnATxyffcasuxU"),
@@ -59,65 +59,12 @@ const {
   const SYSTEM_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
   const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
   
-  // Discriminador correto para a nova instrução notify_matrix_completion
-  const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR = Buffer.from([88, 30, 2, 65, 55, 218, 137, 194]);
+  // Discriminador para register_user no airdrop
+  const REGISTER_USER_DISCRIMINATOR = Buffer.from([2, 241, 150, 223, 99, 214, 116, 97]);
   
   // Função para dormir
   function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
-  }
-  
-  // Função para verificar se a transação foi confirmada
-  async function checkSignatureStatus(connection, signature, timeout = 60000) {
-    const startTime = Date.now();
-    let status = null;
-    
-    while (Date.now() - startTime < timeout) {
-      try {
-        status = await connection.getSignatureStatus(signature, {
-          searchTransactionHistory: true,
-        });
-        
-        if (status && status.value) {
-          if (status.value.err) {
-            return { confirmed: false, error: status.value.err };
-          } else if (status.value.confirmationStatus === 'confirmed' || 
-                    status.value.confirmationStatus === 'finalized') {
-            return { confirmed: true, status: status.value.confirmationStatus };
-          }
-        }
-        
-        console.log(`  🔍 Verificando status (${Math.round((Date.now() - startTime)/1000)}s/${Math.round(timeout/1000)}s)...`);
-        await sleep(2000);
-      } catch (e) {
-        console.log(`  ⚠️ Erro ao verificar status: ${e.message}, tentando novamente...`);
-        await sleep(2000);
-      }
-    }
-    
-    return { confirmed: false, error: 'timeout' };
-  }
-  
-  // Função para mostrar detalhes da ALT
-  async function getAddressLookupTable(connection, altAddress) {
-    console.log("\n📋 OBTENDO ADDRESS LOOKUP TABLE:");
-    
-    try {
-      const lookupTableInfo = await connection.getAddressLookupTable(new PublicKey(altAddress));
-      if (!lookupTableInfo.value) {
-        console.log("❌ ALT não encontrada!");
-        return null;
-      }
-      
-      const lookupTable = lookupTableInfo.value;
-      console.log(`✅ ALT encontrada: ${altAddress}`);
-      console.log(`🔢 Total de endereços: ${lookupTable.state.addresses.length}`);
-      
-      return lookupTable;
-    } catch (error) {
-      console.error(`❌ Erro ao obter ALT: ${error}`);
-      return null;
-    }
   }
   
   // Função para derivar ATA
@@ -148,6 +95,222 @@ const {
       programId: ASSOCIATED_TOKEN_PROGRAM_ID,
       data: Buffer.from([])
     });
+  }
+  
+  // Função para verificar se uma ALT existe e está populada
+  async function validateLookupTable(connection, lookupTableAddress, expectedAddresses) {
+    try {
+      const lookupTableAccount = await connection.getAddressLookupTable(lookupTableAddress);
+      
+      if (!lookupTableAccount.value) {
+        return false;
+      }
+      
+      const tableAddresses = lookupTableAccount.value.state.addresses;
+      
+      // Verificar se todos os endereços esperados estão presentes
+      for (const expectedAddress of expectedAddresses) {
+        const found = tableAddresses.some((addr) => addr.equals(expectedAddress));
+        if (!found) {
+          console.log(`❌ Endereço não encontrado na ALT: ${expectedAddress.toString()}`);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+  
+  // Função para criar e popular ALT com retry robusto
+  async function createAndPopulateLookupTable(connection, wallet, addresses) {
+    console.log("\n🏗️ CRIANDO E POPULANDO ADDRESS LOOKUP TABLE...");
+    console.log(`📊 Total de endereços únicos para adicionar: ${addresses.length}`);
+    
+    try {
+      // Obter slot atual
+      const slot = await connection.getSlot('confirmed');
+      console.log(`📍 Slot atual: ${slot}`);
+      
+      // Criar a lookup table
+      const [createInstruction, lookupTableAddress] = AddressLookupTableProgram.createLookupTable({
+        authority: wallet.publicKey,
+        payer: wallet.publicKey,
+        recentSlot: slot,
+      });
+      
+      console.log(`🔑 Endereço da ALT: ${lookupTableAddress.toString()}`);
+      
+      // Criar e enviar transação de criação
+      const createTableTx = new Transaction().add(createInstruction);
+      const { blockhash } = await connection.getLatestBlockhash('confirmed');
+      createTableTx.recentBlockhash = blockhash;
+      createTableTx.feePayer = wallet.publicKey;
+      
+      const signedCreateTx = await wallet.signTransaction(createTableTx);
+      const createTxId = await connection.sendRawTransaction(signedCreateTx.serialize(), {
+        skipPreflight: false,
+        maxRetries: 5,
+      });
+      
+      console.log(`✅ Transação de criação enviada: ${createTxId}`);
+      console.log(`🔍 Explorer: https://explorer.solana.com/tx/${createTxId}?cluster=devnet`);
+      
+      // Aguardar confirmação
+      console.log("⏳ Aguardando confirmação da criação...");
+      await connection.confirmTransaction(createTxId, 'confirmed');
+      console.log("✅ ALT criada com sucesso!");
+      
+      // Aguardar um pouco para garantir propagação
+      await sleep(3000);
+      
+      // Adicionar endereços em lotes
+      const BATCH_SIZE = 20;
+      const extendTxIds = [];
+      
+      console.log(`\n📝 Adicionando ${addresses.length} endereços em lotes de ${BATCH_SIZE}...`);
+      
+      for (let i = 0; i < addresses.length; i += BATCH_SIZE) {
+        const batch = addresses.slice(i, i + BATCH_SIZE);
+        const batchIndex = Math.floor(i / BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(addresses.length / BATCH_SIZE);
+        
+        console.log(`\n📦 Processando lote ${batchIndex}/${totalBatches} (${batch.length} endereços)...`);
+        
+        const extendInstruction = AddressLookupTableProgram.extendLookupTable({
+          payer: wallet.publicKey,
+          authority: wallet.publicKey,
+          lookupTable: lookupTableAddress,
+          addresses: batch,
+        });
+        
+        const extendTableTx = new Transaction().add(extendInstruction);
+        const { blockhash: extendBlockhash } = await connection.getLatestBlockhash('confirmed');
+        extendTableTx.recentBlockhash = extendBlockhash;
+        extendTableTx.feePayer = wallet.publicKey;
+        
+        const signedExtendTx = await wallet.signTransaction(extendTableTx);
+        
+        let retries = 3;
+        while (retries > 0) {
+          try {
+            const extendTxId = await connection.sendRawTransaction(signedExtendTx.serialize(), {
+              skipPreflight: true,
+              maxRetries: 3,
+            });
+            
+            console.log(`  ✅ Transação do lote ${batchIndex} enviada: ${extendTxId}`);
+            extendTxIds.push(extendTxId);
+            
+            // Aguardar confirmação do lote
+            await connection.confirmTransaction(extendTxId, 'processed');
+            break;
+          } catch (error) {
+            retries--;
+            if (retries > 0) {
+              console.log(`  ⚠️ Erro no lote ${batchIndex}, tentando novamente...`);
+              await sleep(2000);
+            } else {
+              throw error;
+            }
+          }
+        }
+        
+        // Pausa entre lotes
+        if (i + BATCH_SIZE < addresses.length) {
+          await sleep(2000);
+        }
+      }
+      
+      // Aguardar propagação final
+      console.log("\n⏳ Aguardando propagação completa da ALT...");
+      await sleep(5000);
+      
+      // Verificar ALT final
+      const lookupTableAccount = await connection.getAddressLookupTable(lookupTableAddress);
+      if (!lookupTableAccount.value) {
+        throw new Error("ALT não encontrada após criação!");
+      }
+      
+      console.log(`✅ ALT verificada com ${lookupTableAccount.value.state.addresses.length} endereços`);
+      console.log(`🎉 ALT criada e populada com sucesso!`);
+      
+      return {
+        lookupTableAddress,
+        lookupTableAccount: lookupTableAccount.value,
+        createTxId,
+        extendTxIds,
+      };
+      
+    } catch (error) {
+      console.error("❌ Erro ao criar/popular ALT:", error);
+      throw error;
+    }
+  }
+  
+  // Função para coletar TODOS os endereços necessários para ALT
+  function collectAllAddressesForALT(
+    walletPublicKey,
+    referrerAddress,
+    referrerPDA,
+    userPDA,
+    programSolVault,
+    userWsolAccount,
+    userDonutAccount,
+    stateAddress,
+    matrixProgramId,
+    remainingAccounts
+  ) {
+    console.log("\n📋 COLETANDO TODOS OS ENDEREÇOS PARA ALT...");
+    
+    const allAddresses = new Set();
+    
+    // 1. Contas principais da instrução register
+    console.log("  ➕ Contas principais da instrução...");
+    const mainAccounts = [
+      stateAddress,
+      walletPublicKey,
+      referrerPDA,
+      referrerAddress,
+      userPDA,
+      userWsolAccount,
+      userDonutAccount,
+      VERIFIED_ADDRESSES.WSOL_MINT,
+      VERIFIED_ADDRESSES.POOL_ADDRESS,
+      VERIFIED_ADDRESSES.B_VAULT,
+      VERIFIED_ADDRESSES.B_TOKEN_VAULT,
+      VERIFIED_ADDRESSES.B_VAULT_LP_MINT,
+      VERIFIED_ADDRESSES.B_VAULT_LP,
+      VERIFIED_ADDRESSES.METEORA_VAULT_PROGRAM,
+      programSolVault,
+      VERIFIED_ADDRESSES.TOKEN_MINT,
+      VERIFIED_ADDRESSES.PROTOCOL_TOKEN_B_FEE,
+      VERIFIED_ADDRESSES.METEORA_AMM_PROGRAM,
+      SPL_TOKEN_PROGRAM_ID,
+      SystemProgram.programId,
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      SYSVAR_RENT_PUBKEY
+    ];
+    
+    mainAccounts.forEach(addr => {
+      if (addr) allAddresses.add(addr.toString());
+    });
+    
+    // 2. Adicionar TODOS os endereços dos remaining accounts
+    console.log(`  ➕ Adicionando ${remainingAccounts.length} remaining accounts...`);
+    remainingAccounts.forEach(acc => {
+      if (acc && acc.pubkey) {
+        allAddresses.add(acc.pubkey.toString());
+      }
+    });
+    
+    // Converter para array de PublicKey
+    const uniqueAddresses = Array.from(allAddresses).map(addr => new PublicKey(addr));
+    
+    console.log(`  📊 Total de endereços únicos coletados: ${uniqueAddresses.length}`);
+    
+    return uniqueAddresses;
   }
   
   // Função para verificar se o usuário está registrado no airdrop
@@ -185,22 +348,15 @@ const {
       VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
     );
     
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
-    
     const instructions = [];
     
-    const computeUnits = 200_000;
-    const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-      units: computeUnits
-    });
-    instructions.push(modifyComputeUnits);
+    instructions.push(ComputeBudgetProgram.setComputeUnitLimit({
+      units: 200_000
+    }));
     
-    const setPriority = ComputeBudgetProgram.setComputeUnitPrice({
+    instructions.push(ComputeBudgetProgram.setComputeUnitPrice({
       microLamports: 50000
-    });
-    instructions.push(setPriority);
-    
-    const registerUserDiscriminator = Buffer.from([2, 241, 150, 223, 99, 214, 116, 97]);
+    }));
     
     const registerInstruction = new TransactionInstruction({
       programId: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
@@ -210,21 +366,23 @@ const {
         { pubkey: userAccountPda, isSigner: false, isWritable: true },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       ],
-      data: registerUserDiscriminator
+      data: REGISTER_USER_DISCRIMINATOR
     });
     
     instructions.push(registerInstruction);
     
-    const messageV0 = new TransactionMessage({
-      payerKey: walletKeypair.publicKey,
-      recentBlockhash: blockhash,
-      instructions
-    }).compileToV0Message();
-    
-    const transaction = new VersionedTransaction(messageV0);
-    transaction.sign([walletKeypair]);
-    
     try {
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+      
+      const messageV0 = new TransactionMessage({
+        payerKey: walletKeypair.publicKey,
+        recentBlockhash: blockhash,
+        instructions
+      }).compileToV0Message();
+      
+      const transaction = new VersionedTransaction(messageV0);
+      transaction.sign([walletKeypair]);
+      
       console.log("📤 Enviando transação de registro no airdrop...");
       const txid = await connection.sendTransaction(transaction, {
         skipPreflight: true,
@@ -234,36 +392,25 @@ const {
       console.log(`✅ Transação enviada: ${txid}`);
       console.log(`🔍 Explorer: https://explorer.solana.com/tx/${txid}?cluster=devnet`);
       
-      console.log(`\n⏳ Aguardando confirmação (timeout: 60s)...`);
-      const result = await checkSignatureStatus(connection, txid, 60000);
+      await connection.confirmTransaction({
+        signature: txid,
+        blockhash,
+        lastValidBlockHeight,
+      }, 'confirmed');
       
-      if (result.confirmed) {
-        console.log(`✅ Registro no airdrop confirmado com status: ${result.status}!`);
-        
-        await sleep(2000);
-        if (await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey)) {
-          return true;
-        } else {
-          console.log("⚠️ Transação confirmada, mas conta não encontrada. Algo deu errado.");
-          return false;
-        }
-      } else {
-        console.log(`❌ Transação não confirmada: ${result.error}`);
-        return false;
-      }
+      console.log("✅ Registro no airdrop confirmado!");
+      await sleep(2000);
+      
+      return await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey);
     } catch (error) {
       console.error("❌ Erro ao registrar no airdrop:", error.message);
-      if (error.logs) {
-        console.log("\n📋 LOGS DE ERRO:");
-        error.logs.forEach((log, i) => console.log(`${i}: ${log}`));
-      }
       return false;
     }
   }
   
   // Função para preparar contas do airdrop
   async function prepareAirdropAccounts(connection, referrerAddress) {
-    console.log("\n🪂 PREPARANDO CONTAS DO PROGRAMA DE AIRDROP PARA SLOT 3...");
+    console.log("\n🪂 PREPARANDO CONTAS DO PROGRAMA DE AIRDROP...");
     
     const [programStatePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("program_state", "utf8")],
@@ -273,7 +420,6 @@ const {
     
     const stateAccountInfo = await connection.getAccountInfo(programStatePda);
     if (!stateAccountInfo) {
-      console.log(`  ❌ Estado do programa não encontrado! Isso é crítico.`);
       throw new Error("Estado do programa de airdrop não encontrado");
     }
     
@@ -283,22 +429,10 @@ const {
     );
     console.log(`  👤 User Account PDA: ${userAccountPda.toString()}`);
     
-    let userAccountInfo = await connection.getAccountInfo(userAccountPda);
-    let userExists = userAccountInfo !== null && userAccountInfo.owner.equals(VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID);
-    
-    if (userExists) {
-      console.log(`  ✅ Referenciador já registrado no programa de airdrop`);
-    } else {
-      console.log(`  ❌ ERRO: Referenciador não está registrado no programa de airdrop!`);
-      throw new Error("Referenciador não registrado no airdrop. Execute register-airdrop-user.js primeiro.");
-    }
-    
     let currentWeek = 1;
     if (stateAccountInfo && stateAccountInfo.data.length >= 73) {
       currentWeek = stateAccountInfo.data[72];
       console.log(`  📅 Semana atual: ${currentWeek}`);
-    } else {
-      console.log(`  ⚠️ Formato inesperado da conta de estado, usando semana padrão 1`);
     }
     
     const [currentWeekDataPda] = PublicKey.findProgramAddressSync(
@@ -307,144 +441,56 @@ const {
     );
     console.log(`  📊 Current Week Data PDA: ${currentWeekDataPda.toString()}`);
     
-    const currentWeekDataInfo = await connection.getAccountInfo(currentWeekDataPda);
-    if (!currentWeekDataInfo) {
-      console.log(`  ⚠️ Dados da semana atual não encontrados. Será criado automaticamente.`);
-    } else {
-      console.log(`  ✅ Dados da semana atual encontrados`);
-    }
-    
     const [nextWeekDataPda] = PublicKey.findProgramAddressSync(
       [Buffer.from("weekly_data", "utf8"), Buffer.from([currentWeek + 1])],
       VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
     );
     console.log(`  📊 Next Week Data PDA: ${nextWeekDataPda.toString()}`);
     
-    const nextWeekDataInfo = await connection.getAccountInfo(nextWeekDataPda);
-    if (!nextWeekDataInfo) {
-      console.log(`  ⚠️ Dados da próxima semana não encontrados. Será criado automaticamente.`);
-    } else {
-      console.log(`  ✅ Dados da próxima semana encontrados`);
-    }
-    
     return {
       programStatePda,
       userAccountPda,
       currentWeekDataPda,
       nextWeekDataPda,
-      userExists,
       currentWeek,
-      stateAccountInfo,
-      userAccountInfo,
-      currentWeekDataInfo,
-      nextWeekDataInfo
     };
-  }
-  
-  // Função para preparar contas do airdrop para um endereço específico
-  async function prepareAirdropAccountsForWallet(connection, walletAddress) {
-    const [programStatePda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("program_state", "utf8")],
-      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
-    );
-    
-    const stateAccountInfo = await connection.getAccountInfo(programStatePda);
-    if (!stateAccountInfo) {
-      throw new Error("Estado do programa de airdrop não encontrado");
-    }
-    
-    const [userAccountPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("user_account", "utf8"), walletAddress.toBuffer()],
-      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
-    );
-    
-    let currentWeek = 1;
-    if (stateAccountInfo && stateAccountInfo.data.length >= 73) {
-      currentWeek = stateAccountInfo.data[72];
-    }
-    
-    const [currentWeekDataPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("weekly_data", "utf8"), Buffer.from([currentWeek])],
-      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
-    );
-    
-    const [nextWeekDataPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from("weekly_data", "utf8"), Buffer.from([currentWeek + 1])],
-      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
-    );
-    
-    return {
-      programStatePda,
-      userAccountPda,
-      currentWeekDataPda,
-      nextWeekDataPda,
-      currentWeek
-    };
-  }
-  
-  // Função auxiliar para calcular semana esperada
-  function calculateExpectedWeek(stateAccountData) {
-    // O start_timestamp está no offset 40 (após admin + donut_token_mint + current_week + matrix_program_id)
-    const startTimestamp = Number(stateAccountData.readBigInt64LE(40));
-    const currentTimestamp = Math.floor(Date.now() / 1000);
-    const elapsedSeconds = currentTimestamp - startTimestamp;
-    const expectedWeek = Math.min(Math.floor(elapsedSeconds / 600) + 1, 36); // 600 = WEEK_DURATION_SECONDS
-    return expectedWeek;
   }
   
   // Função principal
   async function main() {
-    console.log("\n🚀 REGISTER V6 - VERSÃO COM ARGUMENTOS CLI 🚀");
-    console.log("===========================================");
+    console.log("\n🚀 REGISTER V9 - ALT OTIMIZADA 🚀");
+    console.log("=====================================");
     
     const args = process.argv.slice(2);
     
-    if (args.length < 4) {
+    if (args.length < 3) {
       console.error("\n❌ ERRO: Argumentos insuficientes!");
       console.log("\n📖 USO:");
-      console.log("node register-v6.js <carteira> <config> <referenciador> <alt>");
-      console.log("\n📋 EXEMPLO:");
-      console.log("node register-v6.js ./carteiras/carteira3.json ./matriz-config.json QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv 5EzjPd9ZKqHFSZ9d4rND3X3uwXSVxT65DSkerK6jHaw2");
-      console.log("\n💡 ARGUMENTOS:");
-      console.log("  carteira      - Caminho para o arquivo JSON da carteira");
-      console.log("  config        - Caminho para o arquivo de configuração");
-      console.log("  referenciador - Endereço público do referenciador");
-      console.log("  alt           - Endereço da Address Lookup Table");
-      console.log("\n📌 OPCIONAL:");
-      console.log("  Você pode adicionar um 5º argumento para o valor do depósito em SOL (padrão: 0.1)");
+      console.log("node register-v9.js <carteira> <config> <referenciador> [deposito]");
       process.exit(1);
     }
     
     const walletPath = args[0];
     const configPath = args[1];
     const referrerAddressStr = args[2];
-    const altAddress = args[3];
-    const depositAmountStr = args[4] || '0.1';
+    const depositAmountStr = args[3] || '0.1';
     
     console.log("\n📋 CONFIGURAÇÃO:");
     console.log(`  Carteira: ${walletPath}`);
     console.log(`  Config: ${configPath}`);
     console.log(`  Referenciador: ${referrerAddressStr}`);
-    console.log(`  ALT: ${altAddress}`);
     console.log(`  Depósito: ${depositAmountStr} SOL`);
     
     try {
-      let referrerAddress;
-      try {
-        referrerAddress = new PublicKey(referrerAddressStr);
-      } catch (e) {
-        console.error("\n❌ ERRO: Endereço do referenciador inválido!");
-        process.exit(1);
+      // Validações
+      const referrerAddress = new PublicKey(referrerAddressStr);
+      const depositAmount = Math.floor(parseFloat(depositAmountStr) * 1e9);
+      
+      if (depositAmount <= 0) {
+        throw new Error("Valor de depósito inválido");
       }
       
-      let depositAmount;
-      try {
-        depositAmount = Math.floor(parseFloat(depositAmountStr) * 1e9);
-      } catch (e) {
-        console.error("\n❌ ERRO: Valor do depósito inválido!");
-        process.exit(1);
-      }
-      
+      // Carregar carteira e configurações
       console.log(`\nCarregando carteira de ${walletPath}...`);
       const walletKeypair = Keypair.fromSecretKey(
         Uint8Array.from(JSON.parse(fs.readFileSync(walletPath, 'utf8')))
@@ -453,12 +499,12 @@ const {
       const idl = require('./target/idl/referral_system.json');
       const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       
+      // Conectar
       const connection = new Connection('https://api.devnet.solana.com', {
         commitment: 'confirmed',
-        confirmTransactionInitialTimeout: 60000,
-        disableRetryOnRateLimit: false,
+        confirmTransactionInitialTimeout: 90000,
       });
-      console.log('Conectando à Devnet com timeout estendido (60s)');
+      console.log('Conectando à Devnet com timeout estendido (90s)');
       
       const MATRIX_PROGRAM_ID = new PublicKey(config.programId);
       const STATE_ADDRESS = new PublicKey(config.stateAddress);
@@ -470,55 +516,52 @@ const {
       });
       const program = new Program(idl, MATRIX_PROGRAM_ID, provider);
       
+      // Verificar saldo
       console.log("\n👤 USUÁRIO: " + walletKeypair.publicKey.toString());
       console.log("👥 REFERENCIADOR: " + referrerAddress.toString());
       const balance = await connection.getBalance(walletKeypair.publicKey);
       console.log("💰 SALDO: " + balance / 1e9 + " SOL");
       
-      if (balance < depositAmount + 10_000_000) {
+      if (balance < depositAmount + 50_000_000) {
         console.error("❌ Saldo insuficiente!");
         process.exit(1);
       }
       
+      // Verificar referenciador
       console.log("\n🔍 VERIFICANDO REFERENCIADOR...");
       const [referrerPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from("user_account"), referrerAddress.toBuffer()],
         MATRIX_PROGRAM_ID
       );
       
-      let referrerInfo;
-      try {
-        referrerInfo = await program.account.userAccount.fetch(referrerPDA);
-        if (!referrerInfo.isRegistered) {
-          console.error("❌ Referenciador não está registrado!");
-          process.exit(1);
-        }
-        
-        console.log("✅ Referenciador verificado");
-        console.log("📊 Slots: " + referrerInfo.chain.filledSlots + "/3");
-        
-        const slotIndex = referrerInfo.chain.filledSlots;
-        console.log("\n🎯 VOCÊ PREENCHERÁ O SLOT " + (slotIndex + 1));
-        
-        if (slotIndex === 0) {
-          console.log("💱 Slot 1: Swap SOL → DONUT e burn de 100%");
-        } else if (slotIndex === 1) {
-          console.log("💰 Slot 2: Reserva SOL para o referenciador");
-        } else if (slotIndex === 2) {
-          console.log("🔄 Slot 3: Paga SOL reservado e processa recursão");
-          
-          if (!await isUserRegisteredInAirdrop(connection, referrerAddress)) {
-            console.log("\n⚠️ ATENÇÃO: O referenciador não está registrado no programa de airdrop!");
-            console.log("❌ Para preencher o slot 3, o referenciador deve estar registrado no airdrop.");
-            console.log("   Execute: node register-airdrop-user.js <carteira-referenciador>");
-            process.exit(1);
-          }
-        }
-      } catch (e) {
-        console.error("❌ Erro ao verificar referenciador:", e);
+      const referrerInfo = await program.account.userAccount.fetch(referrerPDA);
+      if (!referrerInfo.isRegistered) {
+        console.error("❌ Referenciador não está registrado!");
         process.exit(1);
       }
       
+      console.log("✅ Referenciador verificado");
+      console.log("📊 Slots: " + referrerInfo.chain.filledSlots + "/3");
+      
+      const slotIndex = referrerInfo.chain.filledSlots;
+      const isSlot3 = slotIndex === 2;
+      
+      console.log("\n🎯 VOCÊ PREENCHERÁ O SLOT " + (slotIndex + 1));
+      
+      if (slotIndex === 0) {
+        console.log("💱 Slot 1: Swap SOL → DONUT e burn de 100%");
+      } else if (slotIndex === 1) {
+        console.log("💰 Slot 2: Reserva SOL para o referenciador");
+      } else if (slotIndex === 2) {
+        console.log("🔄 Slot 3: Paga SOL reservado e processa recursão");
+        
+        if (!await isUserRegisteredInAirdrop(connection, referrerAddress)) {
+          console.log("\n⚠️ ATENÇÃO: O referenciador não está registrado no programa de airdrop!");
+          process.exit(1);
+        }
+      }
+      
+      // Verificar se usuário já está registrado
       const [userPDA] = PublicKey.findProgramAddressSync(
         [Buffer.from("user_account"), walletKeypair.publicKey.toBuffer()],
         MATRIX_PROGRAM_ID
@@ -534,28 +577,23 @@ const {
         console.log("✅ Usuário não registrado, prosseguindo...");
       }
       
+      // Registrar no airdrop se necessário
       if (!await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey)) {
-        console.log("\n⚠️ ATENÇÃO: Você não está registrado no programa de airdrop!");
-        console.log("🚀 Registrando automaticamente no airdrop...");
-        
-        const registeredInAirdrop = await registerUserInAirdrop(connection, walletKeypair);
-        if (!registeredInAirdrop) {
-          console.log("\n❌ Falha ao registrar no airdrop. Execute register-airdrop-user.js manualmente.");
+        const registered = await registerUserInAirdrop(connection, walletKeypair);
+        if (!registered) {
+          console.log("❌ Falha ao registrar no airdrop");
           process.exit(1);
         }
-        
-        console.log("\n✅ Registrado com sucesso no airdrop!");
       } else {
-        console.log("\n✅ Usuário já registrado no programa de airdrop!");
+        console.log("✅ Usuário já registrado no airdrop");
       }
       
+      // Derivar PDAs
       console.log("\n🔧 DERIVANDO PDAs...");
-      
       const [programSolVault] = PublicKey.findProgramAddressSync(
         [Buffer.from("program_sol_vault")],
         MATRIX_PROGRAM_ID
       );
-      console.log("💰 Program SOL Vault: " + programSolVault.toString());
       
       const userWsolAccount = getAssociatedTokenAddress(
         VERIFIED_ADDRESSES.WSOL_MINT, 
@@ -566,68 +604,26 @@ const {
         walletKeypair.publicKey
       );
       
+      const wsolInfo = await connection.getAccountInfo(userWsolAccount);
+      const donutInfo = await connection.getAccountInfo(userDonutAccount);
+      
+      console.log("💰 Program SOL Vault: " + programSolVault.toString());
       console.log("💵 User WSOL ATA: " + userWsolAccount.toString());
       console.log("🍩 User DONUT ATA: " + userDonutAccount.toString());
-      
-      const wsolInfo = await connection.getAccountInfo(userWsolAccount);
       console.log(wsolInfo ? "✅ WSOL ATA existe" : "⚠️ WSOL ATA não existe - será criada");
-      
-      const donutInfo = await connection.getAccountInfo(userDonutAccount);
       console.log(donutInfo ? "✅ DONUT ATA existe" : "⚠️ DONUT ATA não existe - será criada");
       
-      // Preparar uplines se for slot 3
+      // Preparar uplines e contas do airdrop se for slot 3
       let uplineAccounts = [];
-      let airdropAccounts = [];
-      let uplinesQueCompletarao = [];
       let airdropInfo = null;
-      const isSlot3 = referrerInfo.chain.filledSlots === 2;
       
       if (isSlot3) {
         console.log("\n🔄 SLOT 3 DETECTADO - Preparando recursividade...");
         
-        airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
-        
-        airdropAccounts = [
-          {
-            pubkey: airdropInfo.programStatePda,
-            isWritable: true,
-            isSigner: false,
-          },
-          {
-            pubkey: airdropInfo.userAccountPda,
-            isWritable: true,
-            isSigner: false,
-          },
-          {
-            pubkey: airdropInfo.currentWeekDataPda,
-            isWritable: true,
-            isSigner: false,
-          },
-          {
-            pubkey: airdropInfo.nextWeekDataPda,
-            isWritable: true,
-            isSigner: false,
-          },
-          {
-            pubkey: referrerAddress,
-            isWritable: true,
-            isSigner: false,
-          },
-          {
-            pubkey: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
-            isWritable: false,
-            isSigner: false,
-          },
-          {
-            pubkey: SYSVAR_INSTRUCTIONS_PUBKEY,
-            isWritable: false,
-            isSigner: false,
-          }
-        ];
-        
+        // Preparar uplines
         if (referrerInfo.upline?.upline?.length > 0) {
-          console.log("\n🔄 Preparando uplines para processamento da matriz...");
           const uplines = referrerInfo.upline.upline.map(entry => entry.pda);
+          uplineAccounts = [];
           
           for (let i = 0; i < Math.min(uplines.length, 6); i++) {
             const uplinePDA = uplines[i];
@@ -641,20 +637,16 @@ const {
                 continue;
               }
               
-              let uplineWallet;
-              
               if (uplineInfo.ownerWallet) {
-                uplineWallet = uplineInfo.ownerWallet;
+                const uplineWallet = uplineInfo.ownerWallet;
                 console.log(`  ✅ Wallet: ${uplineWallet.toString()}`);
-                console.log(`  📊 Slots preenchidos: ${uplineInfo.chain.filledSlots}/3`);
                 
                 if (!await isUserRegisteredInAirdrop(connection, uplineWallet)) {
-                  console.log(`  ❌ Upline ${uplineWallet.toString()} não está registrado no programa de airdrop!`);
-                  console.log(`     Este upline será ignorado na recursão.`);
+                  console.log(`  ❌ Upline não registrado no airdrop!`);
                   continue;
-                } else {
-                  console.log(`  ✅ Upline registrado no airdrop`);
                 }
+                
+                console.log(`  ✅ Upline registrado no airdrop`);
                 
                 uplineAccounts.push({
                   pubkey: uplinePDA,
@@ -667,17 +659,6 @@ const {
                   isWritable: true,
                   isSigner: false,
                 });
-                
-                if (uplineInfo.chain.filledSlots === 2) {
-                  console.log(`  🎯 Este upline COMPLETARÁ sua matriz!`);
-                  uplinesQueCompletarao.push({
-                    wallet: uplineWallet,
-                    index: i
-                  });
-                }
-              } else {
-                console.log(`  ⚠️ Campo owner_wallet não encontrado`);
-                continue;
               }
             } catch (e) {
               console.log(`  ❌ Erro ao analisar upline: ${e.message}`);
@@ -685,77 +666,14 @@ const {
           }
           
           console.log(`  ✅ Total de uplines válidos: ${uplineAccounts.length / 2}`);
-          console.log(`  🎯 Uplines que completarão matriz: ${uplinesQueCompletarao.length}`);
-        } else {
-          console.log("ℹ️ Não há uplines para processar (usuário base)");
         }
         
-        if (uplinesQueCompletarao.length > 0) {
-          console.log("\n🪂 Preparando PDAs do airdrop para uplines que completarão matriz...");
-          
-          for (const uplineInfo of uplinesQueCompletarao) {
-            try {
-              const uplineAirdrop = await prepareAirdropAccountsForWallet(connection, uplineInfo.wallet);
-              
-              uplineInfo.airdropPDAs = [
-                uplineAirdrop.userAccountPda,
-                uplineAirdrop.currentWeekDataPda,
-                uplineAirdrop.nextWeekDataPda
-              ];
-              
-              console.log(`  ✅ PDAs do airdrop preparadas para upline ${uplineInfo.index + 1}`);
-            } catch (e) {
-              console.log(`  ❌ Erro ao preparar PDAs do airdrop: ${e.message}`);
-            }
-          }
-        }
+        // Preparar contas do airdrop
+        airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
       }
       
-      const lookupTableAccount = await getAddressLookupTable(connection, altAddress);
-      
-      if (!lookupTableAccount) {
-        console.error("❌ ALT não encontrada!");
-        process.exit(1);
-      }
-      
-      console.log("\n📤 PREPARANDO TRANSAÇÃO PRINCIPAL...");
-      
-      const { blockhash } = await connection.getLatestBlockhash('confirmed');
-      
-      const instructions = [];
-      
-      const computeUnits = isSlot3 ? 1_400_000 : 1_400_000;
-      const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
-        units: computeUnits
-      });
-      instructions.push(modifyComputeUnits);
-      
-      const setPriority = ComputeBudgetProgram.setComputeUnitPrice({
-        microLamports: 250000
-      });
-      instructions.push(setPriority);
-      
-      if (!wsolInfo) {
-        console.log("  ➕ Adicionando instrução para criar WSOL ATA");
-        const createWsolATA = createATAInstruction(
-          walletKeypair.publicKey,
-          userWsolAccount,
-          walletKeypair.publicKey,
-          VERIFIED_ADDRESSES.WSOL_MINT
-        );
-        instructions.push(createWsolATA);
-      }
-      
-      if (!donutInfo) {
-        console.log("  ➕ Adicionando instrução para criar DONUT ATA");
-        const createDonutATA = createATAInstruction(
-          walletKeypair.publicKey,
-          userDonutAccount,
-          walletKeypair.publicKey,
-          VERIFIED_ADDRESSES.TOKEN_MINT
-        );
-        instructions.push(createDonutATA);
-      }
+      // Construir remaining accounts
+      console.log("\n🔄 CONSTRUINDO REMAINING ACCOUNTS...");
       
       const vaultAAccounts = [
         { pubkey: VERIFIED_ADDRESSES.A_VAULT, isWritable: true, isSigner: false },
@@ -769,121 +687,126 @@ const {
         { pubkey: VERIFIED_ADDRESSES.CHAINLINK_PROGRAM, isWritable: false, isSigner: false },
       ];
       
-      let mainRemainingAccounts = [
-        ...vaultAAccounts,
-        ...chainlinkAccounts,
-        ...airdropAccounts,
-        ...uplineAccounts
-      ];
+      let mainRemainingAccounts = [...vaultAAccounts, ...chainlinkAccounts];
       
-      // ADICIONAR PDAs do airdrop dos uplines NO FINAL
-      if (isSlot3 && uplinesQueCompletarao.length > 0) {
-        console.log("\n➕ Adicionando PDAs do airdrop dos uplines no final...");
-        
-        for (const uplineInfo of uplinesQueCompletarao) {
-          if (uplineInfo.airdropPDAs) {
-            mainRemainingAccounts.push(
-              {
-                pubkey: uplineInfo.airdropPDAs[0],
-                isWritable: true,
-                isSigner: false,
-              },
-              {
-                pubkey: uplineInfo.airdropPDAs[1],
-                isWritable: true,
-                isSigner: false,
-              },
-              {
-                pubkey: uplineInfo.airdropPDAs[2],
-                isWritable: true,
-                isSigner: false,
-              }
-            );
-          }
-        }
-      }
-      
-      // Adicionar PDAs de semanas necessárias de forma inteligente
       if (isSlot3 && airdropInfo) {
-        console.log(`\n🔍 Analisando semanas necessárias...`);
-        console.log(`  📅 Semana atual registrada: ${airdropInfo.currentWeek}`);
+        console.log("  ➕ Adicionando contas do airdrop...");
         
-        // Calcular semana esperada
-        const expectedWeek = calculateExpectedWeek(airdropInfo.stateAccountInfo.data);
-        console.log(`  ⏰ Semana esperada baseada no tempo: ${expectedWeek}`);
+        const airdropAccounts = [
+          { pubkey: airdropInfo.programStatePda, isWritable: true, isSigner: false },
+          { pubkey: airdropInfo.userAccountPda, isWritable: true, isSigner: false },
+          { pubkey: airdropInfo.currentWeekDataPda, isWritable: true, isSigner: false },
+          { pubkey: airdropInfo.nextWeekDataPda, isWritable: true, isSigner: false },
+          { pubkey: referrerAddress, isWritable: true, isSigner: false },
+          { pubkey: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID, isWritable: false, isSigner: false },
+          { pubkey: SYSVAR_INSTRUCTIONS_PUBKEY, isWritable: false, isSigner: false }
+        ];
         
-        // Coletar todas as semanas necessárias
-        const semanasNecessarias = new Set();
+        mainRemainingAccounts = [...mainRemainingAccounts, ...airdropAccounts];
         
-        // Sempre incluir a semana atual e sua próxima
-        semanasNecessarias.add(airdropInfo.currentWeek);
-        if (airdropInfo.currentWeek < 36) {
-          semanasNecessarias.add(airdropInfo.currentWeek + 1);
+        if (uplineAccounts.length > 0) {
+          console.log(`  ➕ Adicionando ${uplineAccounts.length} contas de uplines...`);
+          mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
         }
         
-        // Se há gap, adicionar semanas intermediárias
-        if (expectedWeek > airdropInfo.currentWeek) {
-          console.log(`  ⚠️ Detectado atraso de ${expectedWeek - airdropInfo.currentWeek} semanas`);
-          
-          // Adicionar todas as semanas entre atual e esperada
-          for (let week = airdropInfo.currentWeek + 1; week <= expectedWeek; week++) {
-            semanasNecessarias.add(week);
-            // Adicionar também a próxima de cada uma (para o next_week_data)
-            if (week < 36) {
-              semanasNecessarias.add(week + 1);
-            }
-          }
-        }
-        
-        // Converter para array ordenado e adicionar PDAs
-        const semanasOrdenadas = Array.from(semanasNecessarias).sort((a, b) => a - b);
-        console.log(`\n➕ Adicionando PDAs para semanas: ${semanasOrdenadas.join(', ')}`);
-        
-        for (const week of semanasOrdenadas) {
-          const [weekPda] = PublicKey.findProgramAddressSync(
+        // Adicionar PDAs das semanas
+        console.log("  ➕ Adicionando PDAs de todas as semanas (1-36)...");
+        for (let week = 1; week <= 36; week++) {
+          const [weekPDA] = PublicKey.findProgramAddressSync(
             [Buffer.from("weekly_data", "utf8"), Buffer.from([week])],
             VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
           );
-          
           mainRemainingAccounts.push({
-            pubkey: weekPda,
+            pubkey: weekPDA,
             isWritable: true,
             isSigner: false,
           });
         }
         
-        console.log(`  ✅ Total de ${semanasOrdenadas.length} PDAs de semanas adicionadas`);
-      }
-      
-      console.log(`\n📊 RESUMO DE CONTAS:`);
-      console.log(`  - Vault A: 4 contas`);
-      console.log(`  - Chainlink: 2 contas`);
-      
-      if (isSlot3) {
-        console.log(`  - Airdrop referenciador: 7 contas`);
-        console.log(`  - Uplines matriz: ${uplineAccounts.length} contas (${uplineAccounts.length / 2} uplines)`);
-        if (uplinesQueCompletarao.length > 0) {
-          console.log(`  - PDAs airdrop uplines: ${uplinesQueCompletarao.length * 3} contas`);
+        // Adicionar PDAs do airdrop dos uplines
+        console.log("  ➕ Adicionando PDAs do airdrop dos uplines...");
+        for (let i = 0; i < uplineAccounts.length; i += 2) {
+          if (i + 1 < uplineAccounts.length) {
+            const uplineWallet = uplineAccounts[i + 1].pubkey;
+            
+            const [uplineAirdropPDA] = PublicKey.findProgramAddressSync(
+              [Buffer.from("user_account", "utf8"), uplineWallet.toBuffer()],
+              VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+            );
+            
+            mainRemainingAccounts.push({
+              pubkey: uplineAirdropPDA,
+              isWritable: true,
+              isSigner: false,
+            });
+          }
         }
       }
       
-      console.log(`  📦 Total de remaining accounts: ${mainRemainingAccounts.length}`);
+      console.log(`  📊 Total de remaining accounts: ${mainRemainingAccounts.length}`);
       
-      if (isSlot3) {
-        console.log(`\n📊 ESTRUTURA DETALHADA:`);
-        console.log(`  [0-3]: Vault A`);
-        console.log(`  [4-5]: Chainlink`);
-        console.log(`  [6-12]: Airdrop referenciador`);
-        let currentIdx = 13;
-        console.log(`  [${currentIdx}-${currentIdx + uplineAccounts.length - 1}]: Uplines matriz`);
-        currentIdx += uplineAccounts.length;
-        if (uplinesQueCompletarao.length > 0) {
-          console.log(`  [${currentIdx}-${currentIdx + (uplinesQueCompletarao.length * 3) - 1}]: PDAs airdrop uplines`);
-          currentIdx += uplinesQueCompletarao.length * 3;
-        }
-        console.log(`  [${currentIdx}+]: PDAs semanas`);
+      // Coletar TODOS os endereços para a ALT
+      const allAddresses = collectAllAddressesForALT(
+        walletKeypair.publicKey,
+        referrerAddress,
+        referrerPDA,
+        userPDA,
+        programSolVault,
+        userWsolAccount,
+        userDonutAccount,
+        STATE_ADDRESS,
+        MATRIX_PROGRAM_ID,
+        mainRemainingAccounts
+      );
+      
+      // Criar e popular ALT
+      const { lookupTableAddress, lookupTableAccount } = await createAndPopulateLookupTable(
+        connection,
+        anchorWallet,
+        allAddresses
+      );
+      
+      // Aguardar um pouco para garantir que a ALT está totalmente propagada
+      console.log("\n⏳ Aguardando propagação da ALT...");
+      await sleep(5000);
+      
+      // Preparar instruções
+      console.log("\n📤 PREPARANDO TRANSAÇÃO PRINCIPAL...");
+      
+      const instructions = [];
+      
+      // Compute budget
+      const computeUnits = isSlot3 ? 1_400_000 : 1_000_000;
+      instructions.push(ComputeBudgetProgram.setComputeUnitLimit({
+        units: computeUnits
+      }));
+      
+      instructions.push(ComputeBudgetProgram.setComputeUnitPrice({
+        microLamports: 250000
+      }));
+      
+      // Criar ATAs se necessário
+      if (!wsolInfo) {
+        console.log("  ➕ Adicionando instrução para criar WSOL ATA");
+        instructions.push(createATAInstruction(
+          walletKeypair.publicKey,
+          userWsolAccount,
+          walletKeypair.publicKey,
+          VERIFIED_ADDRESSES.WSOL_MINT
+        ));
       }
       
+      if (!donutInfo) {
+        console.log("  ➕ Adicionando instrução para criar DONUT ATA");
+        instructions.push(createATAInstruction(
+          walletKeypair.publicKey,
+          userDonutAccount,
+          walletKeypair.publicKey,
+          VERIFIED_ADDRESSES.TOKEN_MINT
+        ));
+      }
+      
+      // Criar instrução de registro
       const registerIx = await program.methods
         .registerWithSolDeposit(new BN(depositAmount))
         .accounts({
@@ -915,7 +838,12 @@ const {
       
       instructions.push(registerIx);
       
-      console.log(`📦 Total de instruções na transação principal: ${instructions.length}`);
+      console.log(`📦 Total de instruções: ${instructions.length}`);
+      console.log(`🔑 ALT: ${lookupTableAddress.toString()}`);
+      console.log(`📊 ALT tem ${lookupTableAccount.state.addresses.length} endereços`);
+      
+      // Criar mensagem V0 com ALT
+      const { blockhash } = await connection.getLatestBlockhash('confirmed');
       
       const messageV0 = new TransactionMessage({
         payerKey: walletKeypair.publicKey,
@@ -923,97 +851,90 @@ const {
         instructions
       }).compileToV0Message([lookupTableAccount]);
       
-      const mainTransaction = new VersionedTransaction(messageV0);
-      mainTransaction.sign([walletKeypair]);
+      const transaction = new VersionedTransaction(messageV0);
+      transaction.sign([walletKeypair]);
       
-      console.log("✅ Transação principal preparada com ALT");
+      console.log("✅ Transação preparada com ALT");
       
-      console.log("\n📤 ENVIANDO TRANSAÇÃO PRINCIPAL...");
+      // Enviar transação
+      console.log("\n📤 ENVIANDO TRANSAÇÃO...");
       
       try {
-        const txid = await connection.sendTransaction(mainTransaction, {
+        const signature = await connection.sendTransaction(transaction, {
           skipPreflight: true,
-          maxRetries: 3
+          maxRetries: 5,
         });
         
-        console.log(`✅ Transação principal enviada: ${txid}`);
-        console.log(`🔍 Explorer: https://explorer.solana.com/tx/${txid}?cluster=devnet`);
+        console.log(`✅ Transação enviada: ${signature}`);
+        console.log(`🔍 Explorer: https://explorer.solana.com/tx/${signature}?cluster=devnet`);
         
-        console.log(`\n⏳ Aguardando confirmação da transação principal (timeout: 60s)...`);
-        const result = await checkSignatureStatus(connection, txid, 60000);
+        console.log("\n⏳ Aguardando confirmação...");
         
-        if (result.confirmed) {
-          console.log(`✅ Transação principal confirmada com status: ${result.status}!`);
+        const startTime = Date.now();
+        const timeout = 90000;
+        
+        while (Date.now() - startTime < timeout) {
+          const status = await connection.getSignatureStatus(signature, {
+            searchTransactionHistory: true,
+          });
           
-          console.log("\n⏳ Aguardando 5 segundos para o estado da rede atualizar...");
-          await sleep(5000);
+          if (status && status.value) {
+            if (status.value.err) {
+              throw new Error(`Transação falhou: ${JSON.stringify(status.value.err)}`);
+            }
+            
+            if (status.value.confirmationStatus === 'confirmed' || 
+                status.value.confirmationStatus === 'finalized') {
+              console.log(`✅ Transação confirmada com status: ${status.value.confirmationStatus}`);
+              break;
+            }
+          }
           
-          console.log("\n🔍 VERIFICANDO RESULTADOS...");
-          
+          const elapsed = Math.round((Date.now() - startTime) / 1000);
+          console.log(`  🔍 Verificando status (${elapsed}s/${timeout/1000}s)...`);
+          await sleep(2000);
+        }
+        
+        console.log("\n⏳ Aguardando 5 segundos para o estado atualizar...");
+        await sleep(5000);
+        
+        console.log("\n🔍 VERIFICANDO RESULTADOS...");
+        
+        try {
           const userInfo = await program.account.userAccount.fetch(userPDA);
           console.log("\n📋 REGISTRO CONFIRMADO:");
           console.log("✅ Registrado: " + userInfo.isRegistered);
           console.log("👥 Referenciador: " + userInfo.referrer.toString());
           console.log("🔢 Profundidade: " + userInfo.upline.depth);
-          console.log("👤 Owner Wallet: " + userInfo.ownerWallet.toString());
-          
-          const newReferrerInfo = await program.account.userAccount.fetch(referrerPDA);
-          console.log("\n📋 REFERENCIADOR APÓS REGISTRO:");
-          console.log("📊 Slots: " + newReferrerInfo.chain.filledSlots + "/3");
-          
-          if (newReferrerInfo.reservedSol > 0) {
-            console.log("💰 SOL Reservado: " + newReferrerInfo.reservedSol / 1e9 + " SOL");
-          }
-          
-          if (isSlot3) {
-            console.log("\n🔍 VERIFICANDO MATRIZES COMPLETADAS...");
-            
-            if (newReferrerInfo.chain.filledSlots === 0) {
-              console.log("🎉 Matriz do referenciador direto COMPLETADA!");
-            }
-            
-            if (referrerInfo.upline?.upline?.length > 0) {
-              for (let i = 0; i < Math.min(referrerInfo.upline.upline.length, 6); i++) {
-                const uplineEntry = referrerInfo.upline.upline[i];
-                try {
-                  const uplineInfo = await program.account.userAccount.fetch(uplineEntry.pda);
-                  if (uplineInfo.chain.filledSlots === 0) {
-                    console.log(`🎉 Matriz do upline ${i+1} COMPLETADA!`);
-                  }
-                } catch (e) {
-                  // Ignorar erros
-                }
-              }
-            }
-          }
           
           const newBalance = await connection.getBalance(walletKeypair.publicKey);
           console.log("\n💼 Novo saldo: " + newBalance / 1e9 + " SOL");
           console.log("💸 Gasto total: " + (balance - newBalance) / 1e9 + " SOL");
           
           console.log("\n🎉 REGISTRO CONCLUÍDO COM SUCESSO! 🎉");
-          console.log("=====================================================");
-        } else {
-          console.log(`❌ Transação principal não confirmada: ${result.error}`);
-          throw new Error(`Transação principal não confirmada: ${result.error}`);
+          console.log("🔑 ALT utilizada: " + lookupTableAddress.toString());
+          console.log("=====================================");
+        } catch (e) {
+          console.log("\n✅ Transação confirmada!");
+          console.log("📝 Transação: " + signature);
         }
+        
       } catch (error) {
-        console.error(`❌ ERRO NA TRANSAÇÃO PRINCIPAL: ${error.message}`);
+        console.error("\n❌ ERRO NA TRANSAÇÃO:", error.message);
         
         if (error.logs) {
-          console.log(`\n📋 LOGS DE ERRO:`);
+          console.log("\n📋 LOGS DE ERRO:");
           error.logs.forEach((log, i) => console.log(`${i}: ${log}`));
         }
+        
+        process.exit(1);
       }
-    } catch (error) {
-      console.error("❌ ERRO GERAL:", error.message);
       
-      if (error.logs) {
-        console.log("\n📋 LOGS DE ERRO DETALHADOS:");
-        error.logs.forEach((log, i) => console.log(`${i}: ${log}`));
-      }
+    } catch (error) {
+      console.error("\n❌ ERRO:", error.message);
+      process.exit(1);
     }
   }
   
-  // Executar script
+  // Executar
   main().catch(console.error);
