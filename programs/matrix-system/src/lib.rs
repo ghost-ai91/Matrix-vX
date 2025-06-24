@@ -8,7 +8,7 @@ use solana_program::program::invoke;
 #[cfg(not(feature = "no-entrypoint"))]
 // use {solana_security_txt::security_txt};
 
-declare_id!("7QuDdyvjUGEqtsHhLR15YhNz1KXeBJ9SycVPEu1g8P4i");
+declare_id!("BWnK662qst6w8D8hDpetToB8CUYoUTpS9hWJoF1KupTk");
 
 // #[cfg(not(feature = "no-entrypoint"))]
 // security_txt! {
