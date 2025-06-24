@@ -8,7 +8,7 @@ use solana_program::program::invoke;
 #[cfg(not(feature = "no-entrypoint"))]
 // use {solana_security_txt::security_txt};
 
-declare_id!("BWnK662qst6w8D8hDpetToB8CUYoUTpS9hWJoF1KupTk");
+declare_id!("7QuDdyvjUGEqtsHhLR15YhNz1KXeBJ9SycVPEu1g8P4i");
 
 // #[cfg(not(feature = "no-entrypoint"))]
 // security_txt! {
@@ -97,7 +97,7 @@ pub mod admin_addresses {
 pub mod airdrop_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("3Z3Sd85EEjtmVXCgfPx6ivanXJq3v27b8wCFMwYe3vAg");
+    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("7QuDdyvjUGEqtsHhLR15YhNz1KXeBJ9SycVPEu1g8P4i");
 }
 
 // Constants for the airdrop program
