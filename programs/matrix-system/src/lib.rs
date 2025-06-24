@@ -8,7 +8,7 @@ use solana_program::program::invoke;
 #[cfg(not(feature = "no-entrypoint"))]
 // use {solana_security_txt::security_txt};
 
-declare_id!("7fNNaCQKMqc3gEi6njNkLHCcZoGCdnoLKtyGGUnPCjVT");
+declare_id!("DBHLyhpF3do2unYZ89BTkMJAcnmPEvR3ycSo1zKm1fhL");
 
 // #[cfg(not(feature = "no-entrypoint"))]
 // security_txt! {
@@ -84,9 +84,9 @@ pub mod verified_addresses {
 pub mod admin_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva");
+    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
 
-    pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva");
+    pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
 }
 
 //AirDrop
