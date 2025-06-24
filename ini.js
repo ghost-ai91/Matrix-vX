@@ -19,7 +19,7 @@ const configOutputPath = args[1] || "./matriz-config.json"
 
 // Configurações principais - ATUALIZE COM SEU PROGRAM ID CORRETO
 const PROGRAM_ID = new PublicKey(
-  "273d3yYAozJkMn2qT8afudNiVSF4rpP3zUCKwfw5tJPo"
+  "DBHLyhpF3do2unYZ89BTkMJAcnmPEvR3ycSo1zKm1fhL"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"
@@ -36,7 +36,7 @@ const SYSVAR_RENT_PUBKEY = new PublicKey(
 
 // ATUALIZADO: Novo multisig treasury
 const MULTISIG_TREASURY = new PublicKey(
-  "9n2cXbi9teCd4b9vcr9pqrchH4ZVy1ymbqTZMNNMcEva"
+  "QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv"
 )
 
 // Novos endereços para swap

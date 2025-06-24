@@ -139,6 +139,8 @@ fn user_exists_in_airdrop<'info>(
 }
 
 //CPI airdrop
+// No arquivo matrix-system/src/lib.rs, função notify_airdrop_program
+
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
     _program_id: &Pubkey,
@@ -149,6 +151,11 @@ fn notify_airdrop_program<'info>(
     use solana_program::instruction::Instruction;
 
     msg!("🔄 Notificando airdrop: {}", referrer_wallet);
+    
+    // VERIFICAÇÃO IMPORTANTE: Debug das contas
+    msg!("📍 DEBUG - Procurando contas para notificação:");
+    msg!("  Referrer wallet: {}", referrer_wallet);
+    msg!("  User wallet (pagador): {}", user_wallet.key());
     
     // Verificar se o usuário existe no programa de airdrop
     if !user_exists_in_airdrop(remaining_accounts, referrer_wallet) {
@@ -162,10 +169,38 @@ fn notify_airdrop_program<'info>(
     let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
     let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
     
+    msg!("📍 PDAs derivadas:");
+    msg!("  Program State: {}", program_state_pda);
+    msg!("  User Account: {}", user_account_pda);
+    
     // 2. Encontrar contas nos remaining_accounts
     let program_state_account = remaining_accounts.iter()
         .find(|a| a.key() == program_state_pda)
-        .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
+        .ok_or_else(|| {
+            msg!("❌ Program state PDA não encontrada!");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    
+    // IMPORTANTE: Procurar pela conta do referrer_wallet primeiro
+    let referrer_wallet_info = remaining_accounts.iter()
+        .find(|a| a.key() == *referrer_wallet)
+        .ok_or_else(|| {
+            msg!("❌ Referrer wallet não encontrado nos remaining_accounts!");
+            error!(ErrorCode::MissingUplineAccount)
+        })?;
+    
+    // Depois procurar a PDA do usuário
+    let user_account_info = remaining_accounts.iter()
+        .find(|a| a.key() == user_account_pda)
+        .ok_or_else(|| {
+            msg!("❌ User account PDA não encontrada nos remaining_accounts!");
+            msg!("  Procurando por: {}", user_account_pda);
+            msg!("  Contas disponíveis:");
+            for (i, acc) in remaining_accounts.iter().enumerate() {
+                msg!("    [{}] {}", i, acc.key());
+            }
+            error!(ErrorCode::UserNotRegisteredInAirdrop)
+        })?;
     
     // 3. Obter semana atual
     let data_borrow = program_state_account.data.borrow();
@@ -185,15 +220,7 @@ fn notify_airdrop_program<'info>(
     let next_week_data_seeds = &[b"weekly_data".as_ref(), &next_week_bytes];
     let (next_week_data_pda, _) = Pubkey::find_program_address(next_week_data_seeds, &AIRDROP_PROGRAM_ID);
     
-    // 5. Verificar se contas existem
-    let referrer_wallet_info = remaining_accounts.iter()
-        .find(|a| a.key() == *referrer_wallet)
-        .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
-    
-    let user_account_info = remaining_accounts.iter()
-        .find(|a| a.key() == user_account_pda)
-        .ok_or_else(|| error!(ErrorCode::UserNotRegisteredInAirdrop))?;
-    
+    // 5. Encontrar as contas das semanas
     let current_week_data_info = remaining_accounts.iter()
         .find(|a| a.key() == current_week_data_pda)
         .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
@@ -212,26 +239,28 @@ fn notify_airdrop_program<'info>(
         .find(|a| a.key() == AIRDROP_PROGRAM_ID)
         .ok_or_else(|| error!(ErrorCode::MissingUplineAccount))?;
     
+    msg!("✅ Todas as contas encontradas!");
+    
     // 8. Criar instrução
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
         accounts: vec![
             AccountMeta::new(program_state_pda, false),
-            AccountMeta::new(*referrer_wallet, false),
+            AccountMeta::new(*referrer_wallet, false),  // IMPORTANTE: referrer_wallet, não PDA!
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), true),
+            AccountMeta::new(user_wallet.key(), true),  // Pagador
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false),
         ],
         data: NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec(),
     };
     
-    // 9. Preparar contas para CPI
+    // 9. Preparar contas para CPI NA ORDEM CORRETA
     let account_infos = vec![
         program_state_account.clone(),
-        referrer_wallet_info.clone(),
+        referrer_wallet_info.clone(),    // IMPORTANTE: Usar referrer_wallet_info aqui!
         user_account_info.clone(),
         current_week_data_info.clone(),
         next_week_data_info.clone(),
@@ -240,6 +269,11 @@ fn notify_airdrop_program<'info>(
         instructions_sysvar.clone(),
         airdrop_program_account.clone(),
     ];
+    
+    msg!("📤 Executando CPI com contas:");
+    for (i, acc) in account_infos.iter().enumerate() {
+        msg!("  [{}] {}", i, acc.key());
+    }
     
     // 10. Executar CPI
     invoke(&ix, &account_infos).map_err(|e| {
