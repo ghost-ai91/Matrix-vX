@@ -211,6 +211,9 @@ async function testAddressLookupTables() {
       new web3.PublicKey(
         "SysvarRent111111111111111111111111111111111"
       ), // SYSVAR_RENT_PUBKEY
+      new web3.PublicKey(
+        "9T39G2WmdazRdK4sE6jif7CwvUPUBbCtMaXDkCku7b3z"
+      ), // airdrop
     ]
 
     console.log(

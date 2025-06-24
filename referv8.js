@@ -1,4 +1,4 @@
-// register-v6.js - Versão Corrigida com Ordem Correta dos Remaining Accounts
+// register-v6.js - Versão Final Corrigida
 const { 
     Connection, 
     Keypair, 
@@ -15,7 +15,7 @@ const {
   const path = require('path');
   const os = require('os');
   
-  // Definir SYSVAR_INSTRUCTIONS_PUBKEY
+  // Definir SYSVAR_INSTRUCTIONS_PUBKEY fora do objeto
   const SYSVAR_INSTRUCTIONS_PUBKEY = new PublicKey('Sysvar1nstructions1111111111111111111111111');
   
   // Endereços verificados (igual ao contrato)
@@ -51,7 +51,7 @@ const {
     SOL_USD_FEED: new PublicKey("99B2bTijsU6f1GCT73HmdR7HCFFjGMBcPZY6jZ96ynrR"),
     
     // Programa de Airdrop
-    AIRDROP_PROGRAM_ID: new PublicKey("9T39G2WmdazRdK4sE6jif7CwvUPUBbCtMaXDkCku7b3z"),
+    AIRDROP_PROGRAM_ID: new PublicKey("EmojnbbXnGLsCuQfsUx1MhGQ67r8nobCvNqdDgHKjHc2"),
   };
   
   // Programas do sistema
@@ -59,8 +59,8 @@ const {
   const SYSTEM_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
   const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
   
-  // Discriminador para register_user no airdrop
-  const REGISTER_USER_DISCRIMINATOR = Buffer.from([2, 241, 150, 223, 99, 214, 116, 97]);
+  // Discriminador correto para a nova instrução notify_matrix_completion
+  const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR = Buffer.from([88, 30, 2, 65, 55, 218, 137, 194]);
   
   // Função para dormir
   function sleep(ms) {
@@ -98,7 +98,7 @@ const {
     return { confirmed: false, error: 'timeout' };
   }
   
-  // Função para obter ALT
+  // Função para mostrar detalhes da ALT
   async function getAddressLookupTable(connection, altAddress) {
     console.log("\n📋 OBTENDO ADDRESS LOOKUP TABLE:");
     
@@ -200,6 +200,8 @@ const {
     });
     instructions.push(setPriority);
     
+    const registerUserDiscriminator = Buffer.from([2, 241, 150, 223, 99, 214, 116, 97]);
+    
     const registerInstruction = new TransactionInstruction({
       programId: VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID,
       keys: [
@@ -208,7 +210,7 @@ const {
         { pubkey: userAccountPda, isSigner: false, isWritable: true },
         { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
       ],
-      data: REGISTER_USER_DISCRIMINATOR
+      data: registerUserDiscriminator
     });
     
     instructions.push(registerInstruction);
@@ -242,7 +244,7 @@ const {
         if (await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey)) {
           return true;
         } else {
-          console.log("⚠️ Transação confirmada, mas conta não encontrada.");
+          console.log("⚠️ Transação confirmada, mas conta não encontrada. Algo deu errado.");
           return false;
         }
       } else {
@@ -261,7 +263,7 @@ const {
   
   // Função para preparar contas do airdrop
   async function prepareAirdropAccounts(connection, referrerAddress) {
-    console.log("\n🪂 PREPARANDO CONTAS DO PROGRAMA DE AIRDROP...");
+    console.log("\n🪂 PREPARANDO CONTAS DO PROGRAMA DE AIRDROP PARA SLOT 3...");
     
     const [programStatePda] = PublicKey.findProgramAddressSync(
       [Buffer.from("program_state", "utf8")],
@@ -271,7 +273,7 @@ const {
     
     const stateAccountInfo = await connection.getAccountInfo(programStatePda);
     if (!stateAccountInfo) {
-      console.log(`  ❌ Estado do programa não encontrado!`);
+      console.log(`  ❌ Estado do programa não encontrado! Isso é crítico.`);
       throw new Error("Estado do programa de airdrop não encontrado");
     }
     
@@ -288,13 +290,15 @@ const {
       console.log(`  ✅ Referenciador já registrado no programa de airdrop`);
     } else {
       console.log(`  ❌ ERRO: Referenciador não está registrado no programa de airdrop!`);
-      throw new Error("Referenciador não registrado no airdrop");
+      throw new Error("Referenciador não registrado no airdrop. Execute register-airdrop-user.js primeiro.");
     }
     
     let currentWeek = 1;
     if (stateAccountInfo && stateAccountInfo.data.length >= 73) {
       currentWeek = stateAccountInfo.data[72];
       console.log(`  📅 Semana atual: ${currentWeek}`);
+    } else {
+      console.log(`  ⚠️ Formato inesperado da conta de estado, usando semana padrão 1`);
     }
     
     const [currentWeekDataPda] = PublicKey.findProgramAddressSync(
@@ -305,7 +309,9 @@ const {
     
     const currentWeekDataInfo = await connection.getAccountInfo(currentWeekDataPda);
     if (!currentWeekDataInfo) {
-      console.log(`  ⚠️ Dados da semana atual não encontrados.`);
+      console.log(`  ⚠️ Dados da semana atual não encontrados. Será criado automaticamente.`);
+    } else {
+      console.log(`  ✅ Dados da semana atual encontrados`);
     }
     
     const [nextWeekDataPda] = PublicKey.findProgramAddressSync(
@@ -316,7 +322,9 @@ const {
     
     const nextWeekDataInfo = await connection.getAccountInfo(nextWeekDataPda);
     if (!nextWeekDataInfo) {
-      console.log(`  ⚠️ Dados da próxima semana não encontrados.`);
+      console.log(`  ⚠️ Dados da próxima semana não encontrados. Será criado automaticamente.`);
+    } else {
+      console.log(`  ✅ Dados da próxima semana encontrados`);
     }
     
     return {
@@ -333,10 +341,61 @@ const {
     };
   }
   
+  // Função para preparar contas do airdrop para um endereço específico
+  async function prepareAirdropAccountsForWallet(connection, walletAddress) {
+    const [programStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("program_state", "utf8")],
+      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+    );
+    
+    const stateAccountInfo = await connection.getAccountInfo(programStatePda);
+    if (!stateAccountInfo) {
+      throw new Error("Estado do programa de airdrop não encontrado");
+    }
+    
+    const [userAccountPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("user_account", "utf8"), walletAddress.toBuffer()],
+      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+    );
+    
+    let currentWeek = 1;
+    if (stateAccountInfo && stateAccountInfo.data.length >= 73) {
+      currentWeek = stateAccountInfo.data[72];
+    }
+    
+    const [currentWeekDataPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("weekly_data", "utf8"), Buffer.from([currentWeek])],
+      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+    );
+    
+    const [nextWeekDataPda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("weekly_data", "utf8"), Buffer.from([currentWeek + 1])],
+      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+    );
+    
+    return {
+      programStatePda,
+      userAccountPda,
+      currentWeekDataPda,
+      nextWeekDataPda,
+      currentWeek
+    };
+  }
+  
+  // Função auxiliar para calcular semana esperada
+  function calculateExpectedWeek(stateAccountData) {
+    // O start_timestamp está no offset 40 (após admin + donut_token_mint + current_week + matrix_program_id)
+    const startTimestamp = Number(stateAccountData.readBigInt64LE(40));
+    const currentTimestamp = Math.floor(Date.now() / 1000);
+    const elapsedSeconds = currentTimestamp - startTimestamp;
+    const expectedWeek = Math.min(Math.floor(elapsedSeconds / 600) + 1, 36); // 600 = WEEK_DURATION_SECONDS
+    return expectedWeek;
+  }
+  
   // Função principal
   async function main() {
-    console.log("\n🚀 REGISTER V6 - VERSÃO CORRIGIDA 🚀");
-    console.log("=====================================");
+    console.log("\n🚀 REGISTER V6 - VERSÃO COM ARGUMENTOS CLI 🚀");
+    console.log("===========================================");
     
     const args = process.argv.slice(2);
     
@@ -451,6 +510,7 @@ const {
           if (!await isUserRegisteredInAirdrop(connection, referrerAddress)) {
             console.log("\n⚠️ ATENÇÃO: O referenciador não está registrado no programa de airdrop!");
             console.log("❌ Para preencher o slot 3, o referenciador deve estar registrado no airdrop.");
+            console.log("   Execute: node register-airdrop-user.js <carteira-referenciador>");
             process.exit(1);
           }
         }
@@ -480,7 +540,7 @@ const {
         
         const registeredInAirdrop = await registerUserInAirdrop(connection, walletKeypair);
         if (!registeredInAirdrop) {
-          console.log("\n❌ Falha ao registrar no airdrop.");
+          console.log("\n❌ Falha ao registrar no airdrop. Execute register-airdrop-user.js manualmente.");
           process.exit(1);
         }
         
@@ -517,99 +577,17 @@ const {
       
       // Preparar uplines se for slot 3
       let uplineAccounts = [];
-      let airdropBaseAccounts = [];
-      let additionalAirdropPDAs = [];
+      let airdropAccounts = [];
+      let uplinesQueCompletarao = [];
+      let airdropInfo = null;
       const isSlot3 = referrerInfo.chain.filledSlots === 2;
       
       if (isSlot3) {
         console.log("\n🔄 SLOT 3 DETECTADO - Preparando recursividade...");
         
-        // PRIMEIRO: Coletar TODAS as PDAs do airdrop necessárias
-        console.log("\n📊 COLETANDO PDAs DO AIRDROP DOS UPLINES:");
+        airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
         
-        // Mapa para armazenar wallet -> PDA airdrop
-        const airdropPDAMap = new Map();
-        
-        if (referrerInfo.upline?.upline?.length > 0) {
-          const uplineEntries = referrerInfo.upline.upline;
-          
-          // 1. Coletar TODAS as PDAs do airdrop primeiro
-          for (let i = 0; i < uplineEntries.length; i++) {
-            const uplineEntry = uplineEntries[i];
-            const uplineWallet = uplineEntry.wallet;
-            
-            const [uplineAirdropPDA] = PublicKey.findProgramAddressSync(
-              [Buffer.from("user_account", "utf8"), uplineWallet.toBuffer()],
-              VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
-            );
-            
-            console.log(`\n  Upline ${i} - ${uplineWallet}:`);
-            console.log(`    PDA Airdrop: ${uplineAirdropPDA}`);
-            
-            // Verificar se existe
-            try {
-              const airdropAccountInfo = await connection.getAccountInfo(uplineAirdropPDA);
-              if (airdropAccountInfo && airdropAccountInfo.owner.equals(VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID)) {
-                console.log(`    ✅ Existe no airdrop`);
-                airdropPDAMap.set(uplineWallet.toString(), uplineAirdropPDA);
-              } else {
-                console.log(`    ❌ Não existe no airdrop`);
-              }
-            } catch (e) {
-              console.log(`    ⚠️ Erro ao verificar: ${e.message}`);
-            }
-          }
-          
-          // 2. Processar uplines para a matriz (limitado a 6)
-          console.log("\n📊 PROCESSANDO UPLINES PARA MATRIZ:");
-          
-          for (let i = 0; i < Math.min(uplineEntries.length, 6); i++) {
-            const uplineEntry = uplineEntries[i];
-            const uplinePDA = uplineEntry.pda;
-            const uplineWallet = uplineEntry.wallet;
-            
-            console.log(`\n  Upline ${i}:`);
-            console.log(`    PDA Matriz: ${uplinePDA}`);
-            console.log(`    Wallet: ${uplineWallet}`);
-            
-            try {
-              const uplineInfo = await program.account.userAccount.fetch(uplinePDA);
-              
-              if (!uplineInfo.isRegistered) {
-                console.log(`    ❌ Não registrado na matriz`);
-                continue;
-              }
-              
-              console.log(`    ✅ Registrado - slots: ${uplineInfo.chain.filledSlots}/3`);
-              
-              // Adicionar contas do upline para a matriz
-              uplineAccounts.push({
-                pubkey: uplinePDA,
-                isWritable: true,
-                isSigner: false,
-              });
-              
-              uplineAccounts.push({
-                pubkey: uplineWallet,
-                isWritable: true,
-                isSigner: false,
-              });
-              
-            } catch (e) {
-              console.log(`    ❌ Erro: ${e.message}`);
-            }
-          }
-          
-          console.log(`\n  ✅ Total de uplines para matriz: ${uplineAccounts.length / 2}`);
-        } else {
-          console.log("ℹ️ Não há uplines para processar (usuário base)");
-        }
-        
-        // 3. Preparar contas BASE do programa de airdrop
-        const airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
-        
-        // Montar as 7 contas base do airdrop
-        airdropBaseAccounts = [
+        airdropAccounts = [
           {
             pubkey: airdropInfo.programStatePda,
             isWritable: true,
@@ -647,18 +625,92 @@ const {
           }
         ];
         
-        // 4. Preparar PDAs adicionais do airdrop dos uplines
-        airdropPDAMap.forEach((pda, wallet) => {
-          additionalAirdropPDAs.push({
-            pubkey: pda,
-            isWritable: true,
-            isSigner: false,
-          });
-        });
+        if (referrerInfo.upline?.upline?.length > 0) {
+          console.log("\n🔄 Preparando uplines para processamento da matriz...");
+          const uplines = referrerInfo.upline.upline.map(entry => entry.pda);
+          
+          for (let i = 0; i < Math.min(uplines.length, 6); i++) {
+            const uplinePDA = uplines[i];
+            console.log(`  Analisando upline ${i + 1}: ${uplinePDA.toString()}`);
+            
+            try {
+              const uplineInfo = await program.account.userAccount.fetch(uplinePDA);
+              
+              if (!uplineInfo.isRegistered) {
+                console.log(`  ❌ Upline não está registrado! Ignorando.`);
+                continue;
+              }
+              
+              let uplineWallet;
+              
+              if (uplineInfo.ownerWallet) {
+                uplineWallet = uplineInfo.ownerWallet;
+                console.log(`  ✅ Wallet: ${uplineWallet.toString()}`);
+                console.log(`  📊 Slots preenchidos: ${uplineInfo.chain.filledSlots}/3`);
+                
+                if (!await isUserRegisteredInAirdrop(connection, uplineWallet)) {
+                  console.log(`  ❌ Upline ${uplineWallet.toString()} não está registrado no programa de airdrop!`);
+                  console.log(`     Este upline será ignorado na recursão.`);
+                  continue;
+                } else {
+                  console.log(`  ✅ Upline registrado no airdrop`);
+                }
+                
+                uplineAccounts.push({
+                  pubkey: uplinePDA,
+                  isWritable: true,
+                  isSigner: false,
+                });
+                
+                uplineAccounts.push({
+                  pubkey: uplineWallet,
+                  isWritable: true,
+                  isSigner: false,
+                });
+                
+                if (uplineInfo.chain.filledSlots === 2) {
+                  console.log(`  🎯 Este upline COMPLETARÁ sua matriz!`);
+                  uplinesQueCompletarao.push({
+                    wallet: uplineWallet,
+                    index: i
+                  });
+                }
+              } else {
+                console.log(`  ⚠️ Campo owner_wallet não encontrado`);
+                continue;
+              }
+            } catch (e) {
+              console.log(`  ❌ Erro ao analisar upline: ${e.message}`);
+            }
+          }
+          
+          console.log(`  ✅ Total de uplines válidos: ${uplineAccounts.length / 2}`);
+          console.log(`  🎯 Uplines que completarão matriz: ${uplinesQueCompletarao.length}`);
+        } else {
+          console.log("ℹ️ Não há uplines para processar (usuário base)");
+        }
+        
+        if (uplinesQueCompletarao.length > 0) {
+          console.log("\n🪂 Preparando PDAs do airdrop para uplines que completarão matriz...");
+          
+          for (const uplineInfo of uplinesQueCompletarao) {
+            try {
+              const uplineAirdrop = await prepareAirdropAccountsForWallet(connection, uplineInfo.wallet);
+              
+              uplineInfo.airdropPDAs = [
+                uplineAirdrop.userAccountPda,
+                uplineAirdrop.currentWeekDataPda,
+                uplineAirdrop.nextWeekDataPda
+              ];
+              
+              console.log(`  ✅ PDAs do airdrop preparadas para upline ${uplineInfo.index + 1}`);
+            } catch (e) {
+              console.log(`  ❌ Erro ao preparar PDAs do airdrop: ${e.message}`);
+            }
+          }
+        }
       }
       
-      // Carregar ALT
-      console.log("\n🔍 CARREGANDO ALT...");
       const lookupTableAccount = await getAddressLookupTable(connection, altAddress);
       
       if (!lookupTableAccount) {
@@ -666,14 +718,13 @@ const {
         process.exit(1);
       }
       
-      // Preparar transação
       console.log("\n📤 PREPARANDO TRANSAÇÃO PRINCIPAL...");
       
       const { blockhash } = await connection.getLatestBlockhash('confirmed');
       
       const instructions = [];
       
-      const computeUnits = isSlot3 ? 1_000_000 : 1_400_000;
+      const computeUnits = isSlot3 ? 1_400_000 : 1_400_000;
       const modifyComputeUnits = ComputeBudgetProgram.setComputeUnitLimit({
         units: computeUnits
       });
@@ -706,7 +757,6 @@ const {
         instructions.push(createDonutATA);
       }
       
-      // Construir remaining accounts NA ORDEM CORRETA
       const vaultAAccounts = [
         { pubkey: VERIFIED_ADDRESSES.A_VAULT, isWritable: true, isSigner: false },
         { pubkey: VERIFIED_ADDRESSES.A_VAULT_LP, isWritable: true, isSigner: false },
@@ -719,58 +769,121 @@ const {
         { pubkey: VERIFIED_ADDRESSES.CHAINLINK_PROGRAM, isWritable: false, isSigner: false },
       ];
       
-      // ORDEM CORRETA DOS REMAINING ACCOUNTS (conforme esperado pelo contrato):
-      // 1. Vault A (4 contas)
-      // 2. Chainlink (2 contas)
-      // 3. Airdrop base (7 contas) - apenas slot 3
-      // 4. Uplines da matriz (pares) - apenas slot 3
-      // 5. PDAs adicionais do airdrop - apenas slot 3
+      let mainRemainingAccounts = [
+        ...vaultAAccounts,
+        ...chainlinkAccounts,
+        ...airdropAccounts,
+        ...uplineAccounts
+      ];
       
-      let mainRemainingAccounts = [...vaultAAccounts, ...chainlinkAccounts];
-      
-      if (isSlot3) {
-        console.log("\n🔄 MONTANDO REMAINING ACCOUNTS NA ORDEM CORRETA:");
+      // ADICIONAR PDAs do airdrop dos uplines NO FINAL
+      if (isSlot3 && uplinesQueCompletarao.length > 0) {
+        console.log("\n➕ Adicionando PDAs do airdrop dos uplines no final...");
         
-        // Adicionar as 7 contas base do airdrop
-        mainRemainingAccounts = [...mainRemainingAccounts, ...airdropBaseAccounts];
-        console.log(`  ✅ Adicionadas 7 contas base do airdrop`);
-        
-        // Adicionar uplines da matriz
-        mainRemainingAccounts = [...mainRemainingAccounts, ...uplineAccounts];
-        console.log(`  ✅ Adicionados ${uplineAccounts.length} contas de uplines (${uplineAccounts.length / 2} pares)`);
-        
-        // Adicionar PDAs adicionais do airdrop DEPOIS dos uplines
-        mainRemainingAccounts = [...mainRemainingAccounts, ...additionalAirdropPDAs];
-        console.log(`  ✅ Adicionadas ${additionalAirdropPDAs.length} PDAs adicionais do airdrop`);
-        
-        // Verificar se os uplines estão na posição correta
-        const uplineStartIdx = vaultAAccounts.length + chainlinkAccounts.length + airdropBaseAccounts.length;
-        console.log(`\n📍 VERIFICAÇÃO DA ORDEM:`);
-        console.log(`  - Vault A: índices 0-3 (4 contas)`);
-        console.log(`  - Chainlink: índices 4-5 (2 contas)`);
-        console.log(`  - Airdrop base: índices 6-12 (7 contas)`);
-        console.log(`  - Uplines matriz: índices ${uplineStartIdx}-${uplineStartIdx + uplineAccounts.length - 1} (${uplineAccounts.length} contas)`);
-        console.log(`  - PDAs airdrop extras: índices ${uplineStartIdx + uplineAccounts.length}+ (${additionalAirdropPDAs.length} contas)`);
+        for (const uplineInfo of uplinesQueCompletarao) {
+          if (uplineInfo.airdropPDAs) {
+            mainRemainingAccounts.push(
+              {
+                pubkey: uplineInfo.airdropPDAs[0],
+                isWritable: true,
+                isSigner: false,
+              },
+              {
+                pubkey: uplineInfo.airdropPDAs[1],
+                isWritable: true,
+                isSigner: false,
+              },
+              {
+                pubkey: uplineInfo.airdropPDAs[2],
+                isWritable: true,
+                isSigner: false,
+              }
+            );
+          }
+        }
       }
       
-      console.log(`\n📦 TOTAL DE REMAINING ACCOUNTS: ${mainRemainingAccounts.length}`);
-      
-      // Mostrar todas as contas para debug
-      if (isSlot3) {
-        console.log("\n📋 LISTA COMPLETA DE REMAINING ACCOUNTS:");
-        mainRemainingAccounts.forEach((acc, idx) => {
-          let type = "";
-          if (idx < 4) type = "[Vault A]";
-          else if (idx < 6) type = "[Chainlink]";
-          else if (idx < 13) type = "[Airdrop Base]";
-          else if (idx < 13 + uplineAccounts.length) type = "[Upline Matriz]";
-          else type = "[Airdrop PDA Extra]";
+      // Adicionar PDAs de semanas necessárias de forma inteligente
+      if (isSlot3 && airdropInfo) {
+        console.log(`\n🔍 Analisando semanas necessárias...`);
+        console.log(`  📅 Semana atual registrada: ${airdropInfo.currentWeek}`);
+        
+        // Calcular semana esperada
+        const expectedWeek = calculateExpectedWeek(airdropInfo.stateAccountInfo.data);
+        console.log(`  ⏰ Semana esperada baseada no tempo: ${expectedWeek}`);
+        
+        // Coletar todas as semanas necessárias
+        const semanasNecessarias = new Set();
+        
+        // Sempre incluir a semana atual e sua próxima
+        semanasNecessarias.add(airdropInfo.currentWeek);
+        if (airdropInfo.currentWeek < 36) {
+          semanasNecessarias.add(airdropInfo.currentWeek + 1);
+        }
+        
+        // Se há gap, adicionar semanas intermediárias
+        if (expectedWeek > airdropInfo.currentWeek) {
+          console.log(`  ⚠️ Detectado atraso de ${expectedWeek - airdropInfo.currentWeek} semanas`);
           
-          console.log(`  [${idx}] ${type} ${acc.pubkey.toString()}`);
-        });
+          // Adicionar todas as semanas entre atual e esperada
+          for (let week = airdropInfo.currentWeek + 1; week <= expectedWeek; week++) {
+            semanasNecessarias.add(week);
+            // Adicionar também a próxima de cada uma (para o next_week_data)
+            if (week < 36) {
+              semanasNecessarias.add(week + 1);
+            }
+          }
+        }
+        
+        // Converter para array ordenado e adicionar PDAs
+        const semanasOrdenadas = Array.from(semanasNecessarias).sort((a, b) => a - b);
+        console.log(`\n➕ Adicionando PDAs para semanas: ${semanasOrdenadas.join(', ')}`);
+        
+        for (const week of semanasOrdenadas) {
+          const [weekPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("weekly_data", "utf8"), Buffer.from([week])],
+            VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+          );
+          
+          mainRemainingAccounts.push({
+            pubkey: weekPda,
+            isWritable: true,
+            isSigner: false,
+          });
+        }
+        
+        console.log(`  ✅ Total de ${semanasOrdenadas.length} PDAs de semanas adicionadas`);
       }
       
-      // Gerar instrução principal
+      console.log(`\n📊 RESUMO DE CONTAS:`);
+      console.log(`  - Vault A: 4 contas`);
+      console.log(`  - Chainlink: 2 contas`);
+      
+      if (isSlot3) {
+        console.log(`  - Airdrop referenciador: 7 contas`);
+        console.log(`  - Uplines matriz: ${uplineAccounts.length} contas (${uplineAccounts.length / 2} uplines)`);
+        if (uplinesQueCompletarao.length > 0) {
+          console.log(`  - PDAs airdrop uplines: ${uplinesQueCompletarao.length * 3} contas`);
+        }
+      }
+      
+      console.log(`  📦 Total de remaining accounts: ${mainRemainingAccounts.length}`);
+      
+      if (isSlot3) {
+        console.log(`\n📊 ESTRUTURA DETALHADA:`);
+        console.log(`  [0-3]: Vault A`);
+        console.log(`  [4-5]: Chainlink`);
+        console.log(`  [6-12]: Airdrop referenciador`);
+        let currentIdx = 13;
+        console.log(`  [${currentIdx}-${currentIdx + uplineAccounts.length - 1}]: Uplines matriz`);
+        currentIdx += uplineAccounts.length;
+        if (uplinesQueCompletarao.length > 0) {
+          console.log(`  [${currentIdx}-${currentIdx + (uplinesQueCompletarao.length * 3) - 1}]: PDAs airdrop uplines`);
+          currentIdx += uplinesQueCompletarao.length * 3;
+        }
+        console.log(`  [${currentIdx}+]: PDAs semanas`);
+      }
+      
       const registerIx = await program.methods
         .registerWithSolDeposit(new BN(depositAmount))
         .accounts({
@@ -802,7 +915,7 @@ const {
       
       instructions.push(registerIx);
       
-      console.log(`📦 Total de instruções: ${instructions.length}`);
+      console.log(`📦 Total de instruções na transação principal: ${instructions.length}`);
       
       const messageV0 = new TransactionMessage({
         payerKey: walletKeypair.publicKey,
@@ -813,9 +926,9 @@ const {
       const mainTransaction = new VersionedTransaction(messageV0);
       mainTransaction.sign([walletKeypair]);
       
-      console.log("✅ Transação preparada com ALT");
+      console.log("✅ Transação principal preparada com ALT");
       
-      console.log("\n📤 ENVIANDO TRANSAÇÃO...");
+      console.log("\n📤 ENVIANDO TRANSAÇÃO PRINCIPAL...");
       
       try {
         const txid = await connection.sendTransaction(mainTransaction, {
@@ -823,16 +936,16 @@ const {
           maxRetries: 3
         });
         
-        console.log(`✅ Transação enviada: ${txid}`);
+        console.log(`✅ Transação principal enviada: ${txid}`);
         console.log(`🔍 Explorer: https://explorer.solana.com/tx/${txid}?cluster=devnet`);
         
-        console.log(`\n⏳ Aguardando confirmação (timeout: 60s)...`);
+        console.log(`\n⏳ Aguardando confirmação da transação principal (timeout: 60s)...`);
         const result = await checkSignatureStatus(connection, txid, 60000);
         
         if (result.confirmed) {
-          console.log(`✅ Transação confirmada com status: ${result.status}!`);
+          console.log(`✅ Transação principal confirmada com status: ${result.status}!`);
           
-          console.log("\n⏳ Aguardando 5 segundos para o estado atualizar...");
+          console.log("\n⏳ Aguardando 5 segundos para o estado da rede atualizar...");
           await sleep(5000);
           
           console.log("\n🔍 VERIFICANDO RESULTADOS...");
@@ -853,10 +966,24 @@ const {
           }
           
           if (isSlot3) {
+            console.log("\n🔍 VERIFICANDO MATRIZES COMPLETADAS...");
+            
             if (newReferrerInfo.chain.filledSlots === 0) {
-              console.log("\n🎉 MATRIZ DO REFERENCIADOR COMPLETADA!");
-            } else {
-              console.log("\n⚠️ Matriz do referenciador não completada. Slots: " + newReferrerInfo.chain.filledSlots + "/3");
+              console.log("🎉 Matriz do referenciador direto COMPLETADA!");
+            }
+            
+            if (referrerInfo.upline?.upline?.length > 0) {
+              for (let i = 0; i < Math.min(referrerInfo.upline.upline.length, 6); i++) {
+                const uplineEntry = referrerInfo.upline.upline[i];
+                try {
+                  const uplineInfo = await program.account.userAccount.fetch(uplineEntry.pda);
+                  if (uplineInfo.chain.filledSlots === 0) {
+                    console.log(`🎉 Matriz do upline ${i+1} COMPLETADA!`);
+                  }
+                } catch (e) {
+                  // Ignorar erros
+                }
+              }
             }
           }
           
@@ -865,13 +992,13 @@ const {
           console.log("💸 Gasto total: " + (balance - newBalance) / 1e9 + " SOL");
           
           console.log("\n🎉 REGISTRO CONCLUÍDO COM SUCESSO! 🎉");
-          console.log("=====================================");
+          console.log("=====================================================");
         } else {
-          console.log(`❌ Transação não confirmada: ${result.error}`);
-          throw new Error(`Transação não confirmada: ${result.error}`);
+          console.log(`❌ Transação principal não confirmada: ${result.error}`);
+          throw new Error(`Transação principal não confirmada: ${result.error}`);
         }
       } catch (error) {
-        console.error(`❌ ERRO NA TRANSAÇÃO: ${error.message}`);
+        console.error(`❌ ERRO NA TRANSAÇÃO PRINCIPAL: ${error.message}`);
         
         if (error.logs) {
           console.log(`\n📋 LOGS DE ERRO:`);
