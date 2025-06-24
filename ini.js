@@ -19,7 +19,7 @@ const configOutputPath = args[1] || "./matriz-config.json"
 
 // Configurações principais - ATUALIZE COM SEU PROGRAM ID CORRETO
 const PROGRAM_ID = new PublicKey(
-  "DBHLyhpF3do2unYZ89BTkMJAcnmPEvR3ycSo1zKm1fhL"
+  "BWnK662qst6w8D8hDpetToB8CUYoUTpS9hWJoF1KupTk"
 )
 const TOKEN_MINT = new PublicKey(
   "F1vCKXMix75KigbwZUXkVU97NiE1H2ToopttH67ydqvq"

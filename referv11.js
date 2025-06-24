@@ -54,7 +54,7 @@ const {
     SOL_USD_FEED: new PublicKey("99B2bTijsU6f1GCT73HmdR7HCFFjGMBcPZY6jZ96ynrR"),
     
     // Programa de Airdrop
-    AIRDROP_PROGRAM_ID: new PublicKey("FRE8ZnjvQEQDP5GTHpak1X2rpW6CMqVQSoBqjNDi54Bb"),
+    AIRDROP_PROGRAM_ID: new PublicKey("7ATfUGkrws4Va4AHs1W9o2qTtXefLhndfzuArtu5CYPx"),
   };
   
   // Programas do sistema
