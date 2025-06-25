@@ -861,19 +861,8 @@ async function main() {
       
       mainRemainingAccounts = [...mainRemainingAccounts, ...airdropAccounts];
       
-      // IMPORTANTE: Adicionar TODAS as 36 PDAs semanais (contrato espera isso)
-      console.log("  ➕ Adicionando PDAs de todas as semanas (1-36)...");
-      for (let week = 1; week <= 36; week++) {
-        const [weekPDA] = PublicKey.findProgramAddressSync(
-          [Buffer.from("weekly_data", "utf8"), Buffer.from([week])],
-          VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
-        );
-        mainRemainingAccounts.push({
-          pubkey: weekPDA,
-          isWritable: true,
-          isSigner: false,
-        });
-      }
+      // REMOVIDO: NÃO adicionar mais as 36 PDAs semanais
+      console.log("  ✅ Economia: 36 PDAs de semanas NÃO adicionadas!");
       
       // Adicionar PDAs do airdrop dos uplines ANTES dos pares
       if (uplineAccounts.length > 0) {
@@ -924,7 +913,7 @@ async function main() {
       }
       
       console.log(`\n  Total: ${mainRemainingAccounts.length} contas`);
-      console.log(`  📊 Economia: ${36 - 2} = 34 PDAs de semanas removidas!`);
+      console.log(`  📊 Economia: 36 PDAs de semanas removidas!`);
     }
     
     // Verificar cache de ALT
@@ -1128,7 +1117,7 @@ async function main() {
         
         console.log("\n🎉 REGISTRO CONCLUÍDO COM SUCESSO! 🎉");
         console.log("🔑 ALT utilizada: " + lookupTableAddress.toString());
-        console.log("📊 Otimização: economizadas 34 PDAs de semanas!");
+        console.log("📊 Otimização: economizadas 36 PDAs de semanas!");
         console.log("==========================================");
       } catch (e) {
         console.log("\n✅ Transação confirmada!");

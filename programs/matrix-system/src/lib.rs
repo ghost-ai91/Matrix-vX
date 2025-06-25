@@ -2080,6 +2080,8 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(
         let mut current_deposit = deposit_amount;
         let mut wsol_closed = false;
         let mut deposit_allocated = false;
+        let mut total_notifications = 1;
+
         
         msg!("💰 Starting recursion with deposit: {} lamports", current_deposit);
 
@@ -2150,37 +2152,37 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(
                 let pair_count = upline_accounts.len() / 2;
                 
                 // NOVO: Rastrear total de notificações que serão feitas
-                let mut total_upline_notifications = 0;
                 let mut matrices_that_will_complete = 0;
-                
-                // Primeiro, contar quantas matrizes vão completar
-                for pair_index in 0..pair_count {
-                    if pair_index >= MAX_UPLINE_DEPTH || current_deposit == 0 {
-                        break;
-                    }
-                    
-                    let base_idx = pair_index * 2;
-                    let upline_info = &upline_accounts[base_idx];
-                    
-                    if upline_info.owner.eq(&crate::ID) {
-                        let data = upline_info.try_borrow_data()?;
-                        if data.len() > 8 {
-                            let mut account_slice = &data[8..];
-                            if let Ok(upline_data) = UserAccount::deserialize(&mut account_slice) {
-                                if upline_data.is_registered && upline_data.chain.filled_slots == 2 {
-                                    matrices_that_will_complete += 1;
-                                    total_upline_notifications += 1;
+
+                             // Primeiro, contar quantas matrizes vão completar
+                             for pair_index in 0..pair_count {
+                                if pair_index >= MAX_UPLINE_DEPTH {
+                                    break;
+                                }
+                                
+                                let base_idx = pair_index * 2;
+                                let upline_info = &upline_accounts[base_idx];
+                                
+                                if upline_info.owner.eq(&crate::ID) {
+                                    let data = upline_info.try_borrow_data()?;
+                                    if data.len() > 8 {
+                                        let mut account_slice = &data[8..];
+                                        if let Ok(upline_data) = UserAccount::deserialize(&mut account_slice) {
+                                            if upline_data.is_registered && upline_data.chain.filled_slots == 2 {
+                                                matrices_that_will_complete += 1;
+                                                total_notifications += 1; // Adicionar ao total existente
+                                            }
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                }
-                
-                msg!("📊 Total de matrizes que completarão: {}", matrices_that_will_complete);
+                            
+                            msg!("📊 Total de notificações que serão feitas: {}", total_notifications);
+                            msg!("📊 Total de matrizes que completarão: {}", matrices_that_will_complete);
                 
                 const BATCH_SIZE: usize = 1;
                 let batch_count = (pair_count + BATCH_SIZE - 1) / BATCH_SIZE;
-                let mut notifications_made = 0;
+                let mut notifications_made = 1;
                 
                 for batch_idx in 0..batch_count {
                     let start_pair = batch_idx * BATCH_SIZE;
@@ -2334,10 +2336,10 @@ pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(
                         
                         if chain_completed {
                             notifications_made += 1;
-                            let is_last_notification = notifications_made == total_upline_notifications;
+                            let is_last_notification = notifications_made == total_notifications;
                             
                             msg!("📊 Notificação {}/{} (última: {})", 
-                                 notifications_made, total_upline_notifications, is_last_notification);
+                                 notifications_made, total_notifications, is_last_notification);
                             
                             notify_airdrop_program(
                                 &upline_wallet.key(),
