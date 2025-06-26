@@ -1,4 +1,4 @@
-// register-v11-optimized.js - Versão otimizada sem 36 semanas
+// register-v11-optimized-fixed.js - Versão otimizada sem 36 semanas e com uplines corrigidos
 const { 
   Connection, 
   Keypair, 
@@ -546,7 +546,7 @@ async function confirmTransactionWithRetry(connection, signature, maxRetries = 3
 
 // Função principal
 async function main() {
-  console.log("\n🚀 REGISTER V11 - OTIMIZADO SEM 36 SEMANAS 🚀");
+  console.log("\n🚀 REGISTER V11 - OTIMIZADO E CORRIGIDO 🚀");
   console.log("==========================================");
   
   const args = process.argv.slice(2);
@@ -554,9 +554,9 @@ async function main() {
   if (args.length < 3) {
     console.error("\n❌ ERRO: Argumentos insuficientes!");
     console.log("\n📖 USO:");
-    console.log("node register-v11-optimized.js <carteira> <config> <referenciador> [deposito]");
+    console.log("node register-v11-optimized-fixed.js <carteira> <config> <referenciador> [deposito]");
     console.log("\nEXEMPLO:");
-    console.log("node register-v11-optimized.js wallet.json config.json 5azaX9wJta8Z1gH3akQNPNZUKMXLGkYCmTqYK6gLpHb1 0.1");
+    console.log("node register-v11-optimized-fixed.js wallet.json config.json 5azaX9wJta8Z1gH3akQNPNZUKMXLGkYCmTqYK6gLpHb1 0.1");
     process.exit(1);
   }
   
@@ -729,100 +729,62 @@ async function main() {
         console.log(`  Referrer do referrer: ${referrerInfo.referrer.toString()}`);
       }
       
-      // CRÍTICO: Para usuários não-base no slot 3, DEVE construir uplines
-      if (!isBaseUser) {
-        console.log("\n⚠️ USUÁRIO NÃO-BASE DETECTADO - Construindo cadeia de uplines...");
-        
+      // CORREÇÃO: Usar uplines do referrerInfo ao invés de construir manualmente
+      if (referrerInfo.upline?.upline?.length > 0) {
+        console.log(`\n📊 DEBUG - Uplines encontrados: ${referrerInfo.upline.upline.length}`);
+        const uplines = referrerInfo.upline.upline.map(entry => entry.pda);
         uplineAccounts = [];
-        let currentUserPDA = referrerPDA;
-        let currentUserWallet = referrerAddress;
-        let depth = 0;
         
-        // Percorrer a cadeia subindo pelos referenciadores
-        while (depth < 6) {
+        for (let i = 0; i < Math.min(uplines.length, 6); i++) {
+          const uplinePDA = uplines[i];
+          console.log(`\n  🔍 Analisando upline ${i + 1}: ${uplinePDA.toString()}`);
+          
           try {
-            const currentUserInfo = await program.account.userAccount.fetch(currentUserPDA);
+            const uplineInfo = await program.account.userAccount.fetch(uplinePDA);
             
-            // Verificar slots preenchidos
-            const filledSlots = currentUserInfo.chain.filledSlots;
-            console.log(`  🔍 Analisando: ${currentUserWallet.toString().slice(0, 8)}... (slots: ${filledSlots}/3)`);
-            
-            // CONDIÇÕES DE PARADA:
-            // 1. Se encontrou usuário com slot 0 ou 1 (matriz incompleta)
-            if (filledSlots < 2) {
-              console.log(`  🛑 PARADA: Encontrado usuário com slot ${filledSlots} - matriz incompleta`);
-              break;
+            if (!uplineInfo.isRegistered) {
+              console.log(`  ❌ Upline não está registrado! Ignorando.`);
+              continue;
             }
             
-            // 2. Se é usuário base (não tem referrer ou referrer é SystemProgram)
-            const isCurrentUserBase = !currentUserInfo.referrer || 
-                                    currentUserInfo.referrer.toString() === SystemProgram.programId.toString();
-            
-            // 3. Se é slot 3 de usuário base
-            if (isCurrentUserBase && filledSlots === 3) {
-              console.log(`  🛑 PARADA: Encontrado slot 3 de usuário base`);
-              break;
+            if (uplineInfo.ownerWallet) {
+              const uplineWallet = uplineInfo.ownerWallet;
+              console.log(`  ✅ Wallet: ${uplineWallet.toString()}`);
+              
+              if (!await isUserRegisteredInAirdrop(connection, uplineWallet)) {
+                console.log(`  ❌ Upline não registrado no airdrop!`);
+                continue;
+              }
+              
+              console.log(`  ✅ Upline registrado no airdrop`);
+              
+              uplineAccounts.push({
+                pubkey: uplinePDA,
+                isWritable: true,
+                isSigner: false,
+              });
+              
+              uplineAccounts.push({
+                pubkey: uplineWallet,
+                isWritable: true,
+                isSigner: false,
+              });
             }
-            
-            // Adicionar o par (PDA, Wallet)
-            uplineAccounts.push({
-              pubkey: currentUserPDA,
-              isWritable: true,
-              isSigner: false,
-            });
-            
-            uplineAccounts.push({
-              pubkey: currentUserWallet,
-              isWritable: true,
-              isSigner: false,
-            });
-            
-            console.log(`  ✅ Upline ${depth + 1} adicionado: PDA=${currentUserPDA.toString().slice(0, 8)}... Wallet=${currentUserWallet.toString().slice(0, 8)}...`);
-            
-            // Verificar se está registrado no airdrop
-            if (!await isUserRegisteredInAirdrop(connection, currentUserWallet)) {
-              console.log(`    ⚠️ Aviso: Este upline não está registrado no airdrop`);
-            }
-            
-            // Se não tem referrer, parar (chegou no topo)
-            if (!currentUserInfo.referrer || 
-                currentUserInfo.referrer.toString() === SystemProgram.programId.toString()) {
-              console.log(`  📍 Chegou no topo da cadeia`);
-              break;
-            }
-            
-            // CORREÇÃO: O referrer é uma PDA, precisamos buscar o ownerWallet dele
-            const referrerPDA = currentUserInfo.referrer;
-            console.log(`  🔄 Subindo para referrer PDA: ${referrerPDA.toString().slice(0, 8)}...`);
-            
-            // Buscar informações do referrer
-            const referrerInfo = await program.account.userAccount.fetch(referrerPDA);
-            
-            // Atualizar para o próximo nível usando o ownerWallet do referrer
-            currentUserPDA = referrerPDA;
-            currentUserWallet = referrerInfo.ownerWallet;
-            
-            depth++;
           } catch (e) {
-            console.log(`  ❌ Erro ao buscar upline no nível ${depth + 1}: ${e.message}`);
-            break;
+            console.log(`  ❌ Erro ao analisar upline: ${e.message}`);
           }
         }
         
-        console.log(`\n✅ Total de uplines construídos: ${uplineAccounts.length / 2}`);
+        console.log(`\n✅ Total de uplines válidos: ${uplineAccounts.length / 2}`);
         
         // VERIFICAÇÃO CRÍTICA
-        if (uplineAccounts.length === 0) {
-          console.error("\n❌ ERRO CRÍTICO: Nenhum upline foi construído para usuário não-base!");
-          process.exit(1);
-        }
-        
         if (uplineAccounts.length % 2 !== 0) {
           console.error("\n❌ ERRO CRÍTICO: uplineAccounts tem número ímpar de elementos!");
+          console.log(`  Encontrados: ${uplineAccounts.length} elementos`);
           process.exit(1);
         }
       } else {
-        console.log("\n✅ Usuário base detectado - uplines não necessários");
+        console.log("\n📊 Nenhum upline encontrado no referrer");
       }
       
       // Preparar contas do airdrop
@@ -1118,6 +1080,7 @@ async function main() {
         console.log("\n🎉 REGISTRO CONCLUÍDO COM SUCESSO! 🎉");
         console.log("🔑 ALT utilizada: " + lookupTableAddress.toString());
         console.log("📊 Otimização: economizadas 36 PDAs de semanas!");
+        console.log("🔄 Recursividade: usando uplines do contrato!");
         console.log("==========================================");
       } catch (e) {
         console.log("\n✅ Transação confirmada!");
