@@ -83,7 +83,7 @@ pub mod verified_addresses {
 pub mod admin_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("B7PKzmpHzfDs9Mf3TEzUxihqe4ctb2Q2wvR6KfernDEN");
+    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("FWxDob9WTTgm95XYrr5dXioUbyxm9p4wAJBszKm4Gmtg");
 
     pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
 }
@@ -92,7 +92,7 @@ pub mod admin_addresses {
 pub mod airdrop_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("8HyvhLajjDjGcm89XvEy16VZT5K9W9wrAHuXbhjmFXPa");
+    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("2jvcSsDcae5xKbke4YdqRmcrsehDFdHWMdtMsF7tMLav");
 }
 
 // Constants for the airdrop program
@@ -557,9 +557,17 @@ pub enum ErrorCode {
     #[msg("Non-base user must provide uplines for slot 3")]
     UplineRequiredForNonBase,
     
-    // NOVO ERRO
     #[msg("User not registered in airdrop program")]
     UserNotRegisteredInAirdrop,
+
+    #[msg("Invalid token account")]
+    InvalidTokenAccount,
+    
+    #[msg("Token account has wrong mint")]
+    InvalidTokenMint,
+    
+    #[msg("Token account has wrong owner")]
+    InvalidTokenOwner,
 }
 
 // Event structure for slot filling
@@ -1048,7 +1056,61 @@ fn process_swap_wsol_to_donut<'info>(
     Ok(())
 }
 
-/// Process swap and burn - Modified to work with UncheckedAccount
+/// Helper function to read and validate token account - handles non-existent accounts
+#[allow(deprecated)]
+fn read_and_validate_token_account<'info>(
+    account: &AccountInfo<'info>,
+    expected_mint: &Pubkey,
+    expected_owner: &Pubkey,
+) -> Result<u64> {
+    // Cenário 1: Conta não existe (não foi criada)
+    if account.data_is_empty() || account.lamports() == 0 {
+        msg!("📝 Token account doesn't exist yet. Balance = 0");
+        return Ok(0); // Retorna 0 se conta não existe
+    }
+    
+    let data = account.try_borrow_data()?;
+    
+    // Cenário 2: Conta existe mas dados inválidos
+    if data.len() < 165 {
+        msg!("⚠️ Account exists but invalid size: {}. Treating as 0 balance", data.len());
+        return Ok(0); // Seguro retornar 0
+    }
+    
+    // Cenário 3: Conta não é do Token Program
+    if account.owner != &spl_token::ID {
+        msg!("⚠️ Account not owned by Token Program. Owner: {}. Treating as 0 balance", account.owner);
+        return Ok(0); // Não é token account, balance = 0
+    }
+    
+
+    // Validações normais...
+    let mint = Pubkey::new(&data[0..32]);
+    if mint != *expected_mint {
+        msg!("❌ Token account has wrong mint!");
+        msg!("  Expected: {}", expected_mint);
+        msg!("  Found: {}", mint);
+        return Err(error!(ErrorCode::InvalidTokenMint));
+    }
+
+    let owner = Pubkey::new(&data[32..64]);
+    if owner != *expected_owner {
+        msg!("❌ Token account has wrong owner!");
+        msg!("  Expected: {}", expected_owner);
+        msg!("  Found: {}", owner);
+        return Err(error!(ErrorCode::InvalidTokenOwner));
+    }
+    
+    let amount = u64::from_le_bytes([
+        data[64], data[65], data[66], data[67],
+        data[68], data[69], data[70], data[71],
+    ]);
+    
+    msg!("✅ Valid DONUT token account. Balance: {}", amount);
+    Ok(amount)
+}
+
+/// Process swap and burn - Handles all scenarios
 fn process_swap_and_burn<'info>(
     pool: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
@@ -1069,7 +1131,14 @@ fn process_swap_and_burn<'info>(
     amm_program: &AccountInfo<'info>,
     amount: u64,
 ) -> Result<()> {
-    // Step 1: Calculate minimum DONUT expected
+    // Validar mint
+    verify_address_strict(
+        &token_mint.key(),
+        &verified_addresses::TOKEN_MINT,
+        ErrorCode::InvalidTokenMintAddress
+    )?;
+    
+    // Calculate minimum expected
     let minimum_donut_out = calculate_swap_amount_out(
         pool,
         a_vault,
@@ -1080,8 +1149,22 @@ fn process_swap_and_burn<'info>(
         b_vault_lp_mint,
         amount,
     )?;
+    
+    // CENÁRIO A: Usuário nunca teve DONUT (conta não existe)
+    // balance_before = 0
+    let balance_before = read_and_validate_token_account(
+        user_donut_account,
+        &token_mint.key(),
+        &user_wallet.key(),
+    )?;
+    msg!("📸 DONUT balance BEFORE swap: {}", balance_before);
+    
+    // Se a conta não existe, o swap criará ela
+    if balance_before == 0 && user_donut_account.data_is_empty() {
+        msg!("🆕 User's first DONUT transaction - account will be created by swap");
+    }
 
-    // Step 2: Execute swap
+    // Execute swap
     process_swap_wsol_to_donut(
         pool,
         user_wallet,
@@ -1103,60 +1186,76 @@ fn process_swap_and_burn<'info>(
         minimum_donut_out,
     )?;
 
-    // Force cleanup after swap
     force_memory_cleanup();
 
-    // Step 3: Get DONUT balance - manually deserialize since we're using UncheckedAccount
-    let donut_balance = {
-        let donut_account_data = user_donut_account.try_borrow_data()?;
-        // Token account layout: first 8 bytes is mint, next 8 bytes is owner, next 8 bytes is amount
-        if donut_account_data.len() < 72 {
-            return Err(error!(ErrorCode::SwapFailed));
-        }
-        u64::from_le_bytes([
-            donut_account_data[64],
-            donut_account_data[65],
-            donut_account_data[66],
-            donut_account_data[67],
-            donut_account_data[68],
-            donut_account_data[69],
-            donut_account_data[70],
-            donut_account_data[71],
-        ])
-    };
+    // CENÁRIO B: Após swap, conta agora existe e tem tokens
+    let balance_after = read_and_validate_token_account(
+        user_donut_account,
+        &token_mint.key(),
+        &user_wallet.key(),
+    )?;
+    msg!("📸 DONUT balance AFTER swap: {}", balance_after);
     
-    msg!("DONUT balance after swap: {}", donut_balance);
+    // Calcular recebido
+    let exact_received = balance_after.saturating_sub(balance_before);
+    msg!("💰 EXACT amount received from swap: {}", exact_received);
+    
+    // CENÁRIO C: Swap falhou (não recebeu nada)
+    if exact_received == 0 {
+        msg!("❌ No tokens received from swap!");
+        return Err(error!(ErrorCode::SwapFailed));
+    }
+    
+    // CENÁRIO D: Recebeu menos que o mínimo
+    if exact_received < minimum_donut_out {
+        msg!("❌ Received less than minimum! Got: {}, Min: {}", exact_received, minimum_donut_out);
+        return Err(error!(ErrorCode::SwapFailed));
+    }
 
-    // Step 4: Burn DONUT tokens
-    if donut_balance > 0 {
-        msg!("Burning {} DONUT tokens...", donut_balance);
-        
-        let burn_ix = spl_token::instruction::burn(
-            &token_program.key(),
-            &user_donut_account.key(),
-            &token_mint.key(),
-            &user_wallet.key(),
-            &[],
-            donut_balance,
-        ).map_err(|_| error!(ErrorCode::BurnFailed))?;
-        
-        // Use Vec for account clones to avoid lifetime issues
-        let mut burn_accounts = Vec::with_capacity(3);
-        burn_accounts.push(user_donut_account.clone());
-        burn_accounts.push(token_mint.clone());
-        burn_accounts.push(user_wallet.clone());
-        
-        solana_program::program::invoke(
-            &burn_ix,
-            &burn_accounts,
-        ).map_err(|e| {
-            msg!("Burn failed: {:?}", e);
-            error!(ErrorCode::BurnFailed)
-        })?;
-        
-        msg!("✅ Successfully burned {} DONUT tokens", donut_balance);
-    } else {
-        msg!("⚠️ No DONUT balance to burn");
+    // CENÁRIO E: Tudo OK - queimar tokens recebidos
+    msg!("🔥 Burning EXACT {} DONUT tokens received from swap...", exact_received);
+    
+    let burn_ix = spl_token::instruction::burn(
+        &token_program.key(),
+        &user_donut_account.key(),
+        &token_mint.key(),
+        &user_wallet.key(),
+        &[],
+        exact_received,
+    ).map_err(|_| error!(ErrorCode::BurnFailed))?;
+    
+    let mut burn_accounts = Vec::with_capacity(3);
+    burn_accounts.push(user_donut_account.clone());
+    burn_accounts.push(token_mint.clone());
+    burn_accounts.push(user_wallet.clone());
+    
+    solana_program::program::invoke(
+        &burn_ix,
+        &burn_accounts,
+    ).map_err(|e| {
+        msg!("Burn failed: {:?}", e);
+        error!(ErrorCode::BurnFailed)
+    })?;
+    
+    // CENÁRIO F: Verificar estado final
+    let final_balance = read_and_validate_token_account(
+        user_donut_account,
+        &token_mint.key(),
+        &user_wallet.key(),
+    )?;
+    
+    msg!("✅ Successfully burned {} DONUT tokens", exact_received);
+    msg!("📊 Final balance: {} (started with: {})", final_balance, balance_before);
+    
+    // CENÁRIO G: Se usuário começou com 0, deve terminar com 0
+    if balance_before == 0 && final_balance != 0 {
+        msg!("⚠️ Warning: User started with 0 but has {} remaining", final_balance);
+        // Isso pode acontecer se recebeu mais que o mínimo devido a slippage favorável
+    }
+    
+    // CENÁRIO H: Se usuário tinha saldo, deve manter o saldo original
+    if balance_before > 0 && final_balance != balance_before {
+        msg!("⚠️ Warning: Balance mismatch. Expected: {}, Got: {}", balance_before, final_balance);
     }
 
     Ok(())

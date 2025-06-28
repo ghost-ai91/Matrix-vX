@@ -80,7 +80,7 @@ async function main() {
   console.log("====================================================")
 
   try {
-    const walletPath = process.argv[2] || "/Users/dark/.config/solana/id.json"
+    const walletPath = process.argv[2] || "./carteiras/carteira1.json"
     const configPath = process.argv[3] || "./matriz-config.json"
 
     const config = JSON.parse(fs.readFileSync(configPath, "utf8"))
