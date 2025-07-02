@@ -77,7 +77,7 @@ async function main() {
     const AIRDROP_PROGRAM_ID = new PublicKey("J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX");
     
     // Conexão com parâmetros de timeout ampliados
-    const connection = new Connection('https://api.devnet.solana.com', {
+    const connection = new Connection('https://weathered-quiet-theorem.solana-devnet.quiknode.pro/198997b67cb51804baeb34ed2257274aa2b2d8c0', {
       commitment: 'confirmed',
       confirmTransactionInitialTimeout: 60000, // 60 segundos
       disableRetryOnRateLimit: false,

@@ -6,24 +6,24 @@ use chainlink_solana as chainlink;
 use solana_program::instruction::{AccountMeta, Instruction};
 use solana_program::program::invoke;
 #[cfg(not(feature = "no-entrypoint"))]
-// use {solana_security_txt::security_txt};
+use {solana_security_txt::security_txt};
 
 declare_id!("HHmWjoduwZfupTypPTkVvs4YAHwWwT9EnUFtnNpbMP1T");
 
-// #[cfg(not(feature = "no-entrypoint"))]
-// security_txt! {
-//     name: "Referral Matrix System",
-//     project_url: "https://matrix.matrix",
-//     contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
-//     policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
-//     preferred_languages: "en",
-//     source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
-//     source_revision: env!("GITHUB_SHA", "unknown-revision"),
-//     source_release: env!("PROGRAM_VERSION", "unknown-version"),
-//     encryption: "",
-//     auditors: "",
-//     acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
-// }
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+     name: "Referral Matrix System",
+     project_url: "https://matrix.matrix",
+     contacts: "email:01010101@matrix.io,discord:01010101,whatsapp:+55123456789",
+     policy: "https://github.com/ghost-ai91/matrixv1/blob/main/SECURITY.md",
+     preferred_languages: "en",
+     source_code: "https://github.com/ghost-ai91/matrixv1/blob/main/programs/matrix-system/src/lib.rs",
+     source_revision: env!("GITHUB_SHA", "unknown-revision"),
+     source_release: env!("PROGRAM_VERSION", "unknown-version"),
+     encryption: "",
+     auditors: "",
+     acknowledgements: "We thank all security researchers who contributed to the security of our protocol."
+ }
 
 // Minimum deposit amount in USD (10 dollars in base units - 8 decimals)
 const MINIMUM_USD_DEPOSIT: u64 = 10_00000000; // 10 USD with 8 decimals (Chainlink format)
@@ -98,95 +98,95 @@ pub mod airdrop_addresses {
 // Constants for the airdrop program
 static AIRDROP_PROGRAM_ID: Pubkey = airdrop_addresses::AIRDROP_ACCOUNT;
 
-// Discriminador para a instrução notify_matrix_completion
+// discriminator for instruction notify_matrix_completion
 const NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR: [u8; 8] = [88, 30, 2, 65, 55, 218, 137, 194];
 
-// REMOVIDO: Não usamos mais os discriminadores de register_matrix_*
-
-// Função para verificar se o usuário existe no programa de airdrop
+// Function to verify if the user exists in the Airdrop Program
 fn user_exists_in_airdrop<'info>(
     remaining_accounts: &[AccountInfo<'info>], 
     user_wallet: &Pubkey
 ) -> bool {
-    // Deriva a PDA do usuário no programa de airdrop
-    msg!("Verificando se o usuário existe no programa de airdrop: {}", user_wallet);
+    // derives the user's PDA in the AirDrop program
+    msg!("Checking if user exists in airdrop program: {}", user_wallet);
     let seeds = &[b"user_account", user_wallet.as_ref()];
     let (user_pda, _) = Pubkey::find_program_address(seeds, &AIRDROP_PROGRAM_ID);
     msg!("Seeds: {:?}", seeds);
     msg!("User PDA: {}", user_pda);
     
-    // Busca nos remaining_accounts pela PDA do usuário
+    // Search for remaining_accounts by the user's PDA
     for account_info in remaining_accounts {
         if account_info.key() == user_pda {
-            msg!("Conta encontrada: {}", account_info.key());
-            // Verifica se a conta existe, pertence ao programa de airdrop e tem dados
+            msg!("Account found: {}", account_info.key());
+            // checks if the account exists, belongs to the AirDrop program and has data
             if account_info.owner == &AIRDROP_PROGRAM_ID && 
                account_info.lamports() > 0 && 
                !account_info.data_is_empty() {
                 return true;
             }
             
-            // A conta foi encontrada mas não está inicializada corretamente
-            msg!("A conta do usuário foi encontrada mas não está inicializada corretamente");
+            // The account was found but is not initialized correctly
+            msg!("The user's account was found but is not initialized correctly");
             return false;
         }
     }
     
-    // PDA do usuário não foi encontrada, assumindo que o usuário não existe
-    msg!("PDA do usuário não encontrada, assumindo que o usuário não existe");
+    // PDA of the user was not found, assuming that the user does not exist
+    msg!("User PDA not found, assuming that the user does not exist");
     false
 }
 
-// Função notify_airdrop_program completa com flag is_last_notification
+// Function to notify complete matrix in the airdrop system
 fn notify_airdrop_program<'info>(
     referrer_wallet: &Pubkey,
     _program_id: &Pubkey,
     remaining_accounts: &[AccountInfo<'info>],
     system_program: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
-    is_last_notification: bool,  // NOVO parâmetro
+    is_last_notification: bool, 
 ) -> Result<()> {
-    msg!("🔄 Notificando airdrop: {}", referrer_wallet);
-    msg!("📍 É última notificação: {}", is_last_notification);
+    msg!("Notifying airdrop: {} (last: {})", referrer_wallet, is_last_notification);
     
-    // Verificar se o usuário existe no programa de airdrop
+    // Check if the user exists in the airdrop program
     if !user_exists_in_airdrop(remaining_accounts, referrer_wallet) {
         return Err(error!(ErrorCode::UserNotRegisteredInAirdrop));
     }
     
-    // MUDANÇA: Procurar program_state primeiro (é único e compartilhado)
+    // CHANGE: Look for program_state first (it's unique and shared)
     let state_seeds = &[b"program_state".as_ref()];
     let (program_state_pda, _) = Pubkey::find_program_address(state_seeds, &AIRDROP_PROGRAM_ID);
     
-    msg!("📍 Procurando Program State PDA: {}", program_state_pda);
-    
-    // Program state deve estar na posição 6 (primeira conta do airdrop)
+    // Program state should be at position 6 (first airdrop account)
     let program_state_account = if remaining_accounts.len() > 6 && 
                                    remaining_accounts[6].key() == program_state_pda {
         &remaining_accounts[6]
     } else {
-        // Se não está na posição esperada, procurar
+        // If not at expected position, search
         remaining_accounts.iter()
             .find(|a| a.key() == program_state_pda)
             .ok_or_else(|| {
-                msg!("❌ Program state PDA não encontrada!");
+                msg!("Program state PDA not found!");
                 error!(ErrorCode::MissingUplineAccount)
             })?
     };
+
+    require!(
+        program_state_account.key() == program_state_pda,
+        ErrorCode::InvalidAirdropPDA
+    );
     
-    // Obter current_week
+    // Get current_week
     let current_week = {
         let data_borrow = program_state_account.data.borrow();
         if data_borrow.len() < 73 {
-            msg!("❌ Dados do program state muito pequenos: {} bytes", data_borrow.len());
+            msg!("Program state data too small: {} bytes", data_borrow.len());
             return Err(error!(ErrorCode::MissingUplineAccount));
         }
         let week = data_borrow[72];
-        msg!("📅 Semana atual do airdrop: {}", week);
+        msg!("Current airdrop week: {}", week);
         week
     };
     
-    // MUDANÇA: Derivar todas as PDAs necessárias usando current_week
+    // CHANGE: Derive all necessary PDAs using current_week
     let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
     let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
     
@@ -203,12 +203,7 @@ fn notify_airdrop_program<'info>(
         &AIRDROP_PROGRAM_ID
     );
     
-    msg!("📍 PDAs derivadas para {}:", referrer_wallet);
-    msg!("  User Account: {}", user_account_pda);
-    msg!("  Current Week Data: {}", current_week_data_pda);
-    msg!("  Next Week Data: {}", next_week_data_pda);
-    
-    // MUDANÇA: Busca mais inteligente considerando as posições conhecidas
+    // CHANGE: Smarter search considering known positions
     let mut referrer_wallet_info = None;
     let mut user_account_info = None;
     let mut current_week_data_info = None;
@@ -216,10 +211,10 @@ fn notify_airdrop_program<'info>(
     let mut instructions_sysvar = None;
     let mut airdrop_program_account = None;
     
-    // Primeiro, tentar nas posições esperadas (índices 6-12 para airdrop)
+    // First, try at expected positions (indices 6-12 for airdrop)
     if remaining_accounts.len() > 12 {
-        // Posições esperadas das contas do airdrop:
-        // [6] = program_state (já obtido acima)
+        // Expected positions of airdrop accounts:
+        // [6] = program_state (obtained above)
         // [7] = user_account_pda
         // [8] = current_week_data
         // [9] = next_week_data
@@ -247,79 +242,82 @@ fn notify_airdrop_program<'info>(
         }
     }
     
-    // Se alguma conta não foi encontrada na posição esperada, procurar em todos os accounts
+    // If any account was not found at expected position, search all accounts
     if referrer_wallet_info.is_none() || user_account_info.is_none() || 
        current_week_data_info.is_none() || next_week_data_info.is_none() ||
        instructions_sysvar.is_none() || airdrop_program_account.is_none() {
         
-        msg!("⚠️ Algumas contas não estão nas posições esperadas, procurando...");
-        
-        for (idx, account) in remaining_accounts.iter().enumerate() {
+        for account in remaining_accounts.iter() {
             let key = account.key();
             
             if referrer_wallet_info.is_none() && key == *referrer_wallet {
-                msg!("  ✅ [{}] Encontrado referrer wallet", idx);
                 referrer_wallet_info = Some(account);
             } else if user_account_info.is_none() && key == user_account_pda {
-                msg!("  ✅ [{}] Encontrado user account PDA", idx);
                 user_account_info = Some(account);
             } else if current_week_data_info.is_none() && key == current_week_data_pda {
-                msg!("  ✅ [{}] Encontrado current week data", idx);
                 current_week_data_info = Some(account);
             } else if next_week_data_info.is_none() && key == next_week_data_pda {
-                msg!("  ✅ [{}] Encontrado next week data", idx);
                 next_week_data_info = Some(account);
             } else if instructions_sysvar.is_none() && key == solana_program::sysvar::instructions::ID {
-                msg!("  ✅ [{}] Encontrado instructions sysvar", idx);
                 instructions_sysvar = Some(account);
             } else if airdrop_program_account.is_none() && key == AIRDROP_PROGRAM_ID {
-                msg!("  ✅ [{}] Encontrado airdrop program", idx);
                 airdrop_program_account = Some(account);
             }
         }
     }
     
-    // Verificar se encontrou as contas essenciais
+    // Verify essential accounts were found
     let referrer_wallet_info = referrer_wallet_info.ok_or_else(|| {
-        msg!("❌ Referrer wallet {} não encontrado nos remaining_accounts!", referrer_wallet);
+        msg!("Referrer wallet {} not found!", referrer_wallet);
         error!(ErrorCode::MissingUplineAccount)
     })?;
     
     let user_account_info = user_account_info.ok_or_else(|| {
-        msg!("❌ User account PDA {} não encontrada!", user_account_pda);
-        msg!("   Certifique-se de que o usuário está registrado no airdrop");
+        msg!("User account PDA {} not found!", user_account_pda);
         error!(ErrorCode::UserNotRegisteredInAirdrop)  
     })?;
+
+    // Validate user account PDA
+    require!(
+        user_account_info.key() == user_account_pda,
+        ErrorCode::InvalidAirdropPDA
+    );
     
     let current_week_data_info = current_week_data_info.ok_or_else(|| {
-        msg!("❌ Current week data PDA {} não encontrada!", current_week_data_pda);
-        msg!("   Semana: {}", current_week);
+        msg!("Current week data PDA not found!");
         error!(ErrorCode::MissingUplineAccount)
     })?;
+
+    // Validate current week data PDA
+    require!(
+        current_week_data_info.key() == current_week_data_pda,
+        ErrorCode::InvalidAirdropPDA
+    );
     
     let next_week_data_info = next_week_data_info.ok_or_else(|| {
-        msg!("❌ Next week data PDA {} não encontrada!", next_week_data_pda);
-        msg!("   Semana: {}", next_week);
+        msg!("Next week data PDA not found!");
         error!(ErrorCode::MissingUplineAccount)
     })?;
+
+    // Validate next week data PDA
+    require!(
+        next_week_data_info.key() == next_week_data_pda,
+        ErrorCode::InvalidAirdropPDA
+    );
     
     let instructions_sysvar = instructions_sysvar.ok_or_else(|| {
-        msg!("❌ Instructions sysvar não encontrado!");
         error!(ErrorCode::MissingUplineAccount)
     })?;
     
     let airdrop_program_account = airdrop_program_account.ok_or_else(|| {
-        msg!("❌ Airdrop program não encontrado!");
         error!(ErrorCode::MissingUplineAccount)
     })?;
     
-    msg!("✅ Todas as contas encontradas para notificação!");
-    
-    // NOVO: Criar data da instrução com flag
+    // NEW: Create instruction data with flag
     let mut ix_data = NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec();
     ix_data.push(if is_last_notification { 1u8 } else { 0u8 });
     
-    // Criar instrução CPI
+    // Create CPI instruction
     let ix = Instruction {
         program_id: AIRDROP_PROGRAM_ID,
         accounts: vec![
@@ -328,14 +326,14 @@ fn notify_airdrop_program<'info>(
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
             AccountMeta::new(next_week_data_pda, false),
-            AccountMeta::new(user_wallet.key(), true),  // Pagador
+            AccountMeta::new(user_wallet.key(), true),  // Payer
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false),
         ],
-        data: ix_data,  // Usando data com flag
+        data: ix_data,  // Using data with flag
     };
     
-    // Preparar contas para CPI na ordem correta
+    // Prepare accounts for CPI in correct order
     let account_infos = vec![
         program_state_account.clone(),
         referrer_wallet_info.clone(),
@@ -348,15 +346,13 @@ fn notify_airdrop_program<'info>(
         airdrop_program_account.clone(),
     ];
     
-    msg!("📤 Executando CPI para notificar airdrop (última: {})...", is_last_notification);
-    
-    // Executar CPI
+    // Execute CPI
     invoke(&ix, &account_infos).map_err(|e| {
-        msg!("❌ CPI falhou: {:?}", e);
+        msg!("CPI failed: {:?}", e);
         error!(ErrorCode::ReferrerPaymentFailed)
     })?;
     
-    msg!("✅ Airdrop notificado com sucesso para {}!", referrer_wallet);
+    msg!("Airdrop notified successfully for {}", referrer_wallet);
     Ok(())
 }
 
@@ -464,7 +460,7 @@ impl UserAccount {
                            8;  // reserved_sol
 }
 
-// Error codes - ADDING NEW ERROR CODES
+// Error codes
 #[error_code]
 pub enum ErrorCode {
     #[msg("Referrer account is not registered")]
@@ -568,6 +564,21 @@ pub enum ErrorCode {
     
     #[msg("Token account has wrong owner")]
     InvalidTokenOwner,
+
+    #[msg("Duplicate upline detected - possible exploit attempt")]
+    DuplicateUplineExploit,
+    
+    #[msg("Invalid upline wallet")]
+    InvalidUplineWallet,
+    
+    #[msg("Too many uplines provided")]
+    InvalidUplineCount,
+    
+    #[msg("Invalid airdrop PDA")]
+    InvalidAirdropPDA,
+
+    #[msg("Invalid upline order")]
+    InvalidUplineOrder,
 }
 
 // Event structure for slot filling
@@ -1063,28 +1074,28 @@ fn read_and_validate_token_account<'info>(
     expected_mint: &Pubkey,
     expected_owner: &Pubkey,
 ) -> Result<u64> {
-    // Cenário 1: Conta não existe (não foi criada)
+    // Scenario 1: Account does not exist (not created)
     if account.data_is_empty() || account.lamports() == 0 {
         msg!("📝 Token account doesn't exist yet. Balance = 0");
-        return Ok(0); // Retorna 0 se conta não existe
+        return Ok(0); // Return 0 if account does not exist
     }
     
     let data = account.try_borrow_data()?;
     
-    // Cenário 2: Conta existe mas dados inválidos
+    // Scenario 2: Account exists but invalid data
     if data.len() < 165 {
         msg!("⚠️ Account exists but invalid size: {}. Treating as 0 balance", data.len());
-        return Ok(0); // Seguro retornar 0
+        return Ok(0); // Safe to return 0
     }
     
-    // Cenário 3: Conta não é do Token Program
+    // Scenario 3: Account is not part of the Token Program
     if account.owner != &spl_token::ID {
         msg!("⚠️ Account not owned by Token Program. Owner: {}. Treating as 0 balance", account.owner);
-        return Ok(0); // Não é token account, balance = 0
+        return Ok(0); // It's not a token account, balance = 0
     }
     
 
-    // Validações normais...
+    // Normal validations...
     let mint = Pubkey::new(&data[0..32]);
     if mint != *expected_mint {
         msg!("❌ Token account has wrong mint!");
@@ -1150,7 +1161,7 @@ fn process_swap_and_burn<'info>(
         amount,
     )?;
     
-    // CENÁRIO A: Usuário nunca teve DONUT (conta não existe)
+    // SCENARIO A: User has never had DONUT (account does not exist) 
     // balance_before = 0
     let balance_before = read_and_validate_token_account(
         user_donut_account,
@@ -1159,7 +1170,7 @@ fn process_swap_and_burn<'info>(
     )?;
     msg!("📸 DONUT balance BEFORE swap: {}", balance_before);
     
-    // Se a conta não existe, o swap criará ela
+    // If the account does not exist, swap will create it
     if balance_before == 0 && user_donut_account.data_is_empty() {
         msg!("🆕 User's first DONUT transaction - account will be created by swap");
     }
@@ -1188,7 +1199,7 @@ fn process_swap_and_burn<'info>(
 
     force_memory_cleanup();
 
-    // CENÁRIO B: Após swap, conta agora existe e tem tokens
+    // SCENARIO B: After swap, account now exists and has tokens
     let balance_after = read_and_validate_token_account(
         user_donut_account,
         &token_mint.key(),
@@ -1196,23 +1207,23 @@ fn process_swap_and_burn<'info>(
     )?;
     msg!("📸 DONUT balance AFTER swap: {}", balance_after);
     
-    // Calcular recebido
+    // Calculate received
     let exact_received = balance_after.saturating_sub(balance_before);
     msg!("💰 EXACT amount received from swap: {}", exact_received);
     
-    // CENÁRIO C: Swap falhou (não recebeu nada)
+    // SCENARIO C: Swap failed (did not receive anything)
     if exact_received == 0 {
         msg!("❌ No tokens received from swap!");
         return Err(error!(ErrorCode::SwapFailed));
     }
     
-    // CENÁRIO D: Recebeu menos que o mínimo
+    // SCENARIO D: Received less than minimum
     if exact_received < minimum_donut_out {
         msg!("❌ Received less than minimum! Got: {}, Min: {}", exact_received, minimum_donut_out);
         return Err(error!(ErrorCode::SwapFailed));
     }
 
-    // CENÁRIO E: Tudo OK - queimar tokens recebidos
+    // SCENARIO E: Everything OK - burn received tokens
     msg!("🔥 Burning EXACT {} DONUT tokens received from swap...", exact_received);
     
     let burn_ix = spl_token::instruction::burn(
@@ -1237,25 +1248,25 @@ fn process_swap_and_burn<'info>(
         error!(ErrorCode::BurnFailed)
     })?;
     
-    // CENÁRIO F: Verificar estado final
-    let final_balance = read_and_validate_token_account(
+    // SCENARIO F: Verify final state
+    let end_balance = read_and_validate_token_account(
         user_donut_account,
         &token_mint.key(),
         &user_wallet.key(),
     )?;
     
     msg!("✅ Successfully burned {} DONUT tokens", exact_received);
-    msg!("📊 Final balance: {} (started with: {})", final_balance, balance_before);
+    msg!("📊 Final balance: {} (started with: {})", end_balance, balance_before);
     
-    // CENÁRIO G: Se usuário começou com 0, deve terminar com 0
-    if balance_before == 0 && final_balance != 0 {
-        msg!("⚠️ Warning: User started with 0 but has {} remaining", final_balance);
-        // Isso pode acontecer se recebeu mais que o mínimo devido a slippage favorável
+    // SCENARIO G: If user started with 0, it should end with 0
+    if balance_before == 0 && end_balance != 0 {
+        msg!("⚠️ Warning: User started with 0 but has {} remaining", end_balance);
+        // This can happen if received more than minimum due to favorable slippage
     }
     
-    // CENÁRIO H: Se usuário tinha saldo, deve manter o saldo original
-    if balance_before > 0 && final_balance != balance_before {
-        msg!("⚠️ Warning: Balance mismatch. Expected: {}, Got: {}", balance_before, final_balance);
+    // SCENARIO H: If user had balance, it should keep the original balance
+    if balance_before > 0 && end_balance != balance_before {
+        msg!("⚠️ Warning: Balance mismatch. Expected: {}, Got: {}", balance_before, end_balance);
     }
 
     Ok(())
@@ -1274,11 +1285,11 @@ fn process_referrer_chain<'info>(
     remaining_accounts: &[AccountInfo<'info>],
     system_program: &AccountInfo<'info>,
     user_wallet: &AccountInfo<'info>,
-    is_last_notification: bool,  // NOVO parâmetro
+    is_last_notification: bool,  // NEW parameter
 ) -> Result<(bool, Pubkey)> {
     msg!("🔄 Processing referrer chain for user: {}", user_key);
     msg!("👤 Referrer: {}", referrer.key());
-    msg!("📍 É última notificação: {}", is_last_notification);
+    msg!("📍 Is last notification: {}", is_last_notification);
     
     let slot_idx = referrer.chain.filled_slots as usize;
     if slot_idx >= 3 {
@@ -1301,16 +1312,16 @@ fn process_referrer_chain<'info>(
     msg!("📊 Matrix slots filled: {}/3", referrer.chain.filled_slots);
 
     if referrer.chain.filled_slots == 3 {
-        msg!("🎉 Matrix completed! Notificando programa de airdrop...");
+        msg!("🎉 Matrix completed! Notifying airdrop program...");
         
-        // Chamar a função notify_airdrop_program com flag
+        // Call notify_airdrop_program with flag
         notify_airdrop_program(
             referrer_wallet,
             program_id,
             remaining_accounts,
             system_program,
             user_wallet,
-            is_last_notification,  // NOVO: passar flag
+            is_last_notification,  // NEW: pass flag
         )?;
         
         msg!("🔄 Resetting matrix with new ID: {}", next_chain_id);
@@ -1764,7 +1775,7 @@ pub mod referral_system {
         Ok(())
     }
 
-    // Função register_with_sol_deposit completa SEM AS 36 WEEK PDAs
+    // Register with referrer
     pub fn register_with_sol_deposit<'a, 'b, 'c, 'info>(
         ctx: Context<'a, 'b, 'c, 'info, RegisterWithSolDeposit<'info>>, 
         deposit_amount: u64
@@ -2091,10 +2102,10 @@ pub mod referral_system {
             msg!("✅ SOL wrapped to WSOL for slot 3 processing");
         }
 
-        // NOVO: Rastrear se há uplines para processar no slot 3
+        // Track if there are uplines to process in slot 3
         let mut will_have_upline_notifications = false;
         if slot_idx == 2 && ctx.accounts.referrer.referrer.is_some() {
-            // Usar os índices já calculados acima
+            // Use the indices already calculated above
             const VAULT_A_COUNT: usize = 4;
             const CHAINLINK_COUNT: usize = 2;
             const AIRDROP_BASE_COUNT: usize = 7;
@@ -2123,7 +2134,7 @@ pub mod referral_system {
             }
         }
 
-        // Process the referrer's matrix - determinar se é última notificação
+        // Process the referrer's matrix - determine if it's the last notification
         let is_last_if_no_uplines = slot_idx == 2 && !will_have_upline_notifications;
         
         let (chain_completed, upline_pubkey) = process_referrer_chain(
@@ -2135,7 +2146,7 @@ pub mod referral_system {
             &ctx.remaining_accounts,
             &ctx.accounts.system_program.to_account_info(),
             &ctx.accounts.user_wallet.to_account_info(),
-            is_last_if_no_uplines,  // Se não há uplines, esta é a última
+            is_last_if_no_uplines,  // If there are no uplines, this is the last notification
         )?;
 
         force_memory_cleanup();
@@ -2158,7 +2169,7 @@ pub mod referral_system {
             let mut deposit_allocated = false;
             let mut total_notifications = 1;
 
-            // Usar os índices calculados para uplines
+            // Use the indices calculated for uplines
             const VAULT_A_COUNT: usize = 4;
             const CHAINLINK_COUNT: usize = 2;
             const AIRDROP_BASE_COUNT: usize = 7;
@@ -2226,11 +2237,36 @@ pub mod referral_system {
                     }
                     
                     let pair_count = upline_accounts.len() / 2;
+         
+                    // Validate that the sent uplines correspond to the stored ones
+                    let expected_uplines = &ctx.accounts.referrer.upline.upline;
+                    let provided_pairs = upline_accounts.len() / 2;
                     
-                    // NOVO: Rastrear total de notificações que serão feitas
+                    // Cannot send more uplines than exist
+                    require!(
+                        provided_pairs <= expected_uplines.len(),
+                        ErrorCode::InvalidUplineCount
+                    );
+                    
+                    // Validate each sent pair
+                    for (i, chunk) in upline_accounts.chunks(2).enumerate() {
+                        if i >= expected_uplines.len() { break; }
+                        
+                        require!(
+                            chunk[0].key() == expected_uplines[i].pda,
+                            ErrorCode::InvalidUplineOrder
+                        );
+                        
+                        require!(
+                            chunk[1].key() == expected_uplines[i].wallet,
+                            ErrorCode::InvalidUplineWallet
+                        );
+                    }
+                
+                    // Track total notifications that will be made
                     let mut matrices_that_will_complete = 0;
 
-                    // Primeiro, contar quantas matrizes vão completar
+                    // First, count how many matrices will complete
                     for pair_index in 0..pair_count {
                         if pair_index >= MAX_UPLINE_DEPTH {
                             break;
@@ -2246,19 +2282,24 @@ pub mod referral_system {
                                 if let Ok(upline_data) = UserAccount::deserialize(&mut account_slice) {
                                     if upline_data.is_registered && upline_data.chain.filled_slots == 2 {
                                         matrices_that_will_complete += 1;
-                                        total_notifications += 1; // Adicionar ao total existente
+                                        total_notifications += 1; // Add to existing total
                                     }
                                 }
                             }
                         }
                     }
                     
-                    msg!("📊 Total de notificações que serão feitas: {}", total_notifications);
-                    msg!("📊 Total de matrizes que completarão: {}", matrices_that_will_complete);
+                    msg!("📊 Total number of notifications that will be made: {}", total_notifications);
+                    msg!("📊 Total number of matrices that will complete: {}", matrices_that_will_complete);
     
                     const BATCH_SIZE: usize = 1;
                     let batch_count = (pair_count + BATCH_SIZE - 1) / BATCH_SIZE;
                     let mut notifications_made = 1;
+
+                    //validation
+                    use std::collections::HashSet;
+                    let mut processed_uplines = HashSet::new();
+
                     
                     for batch_idx in 0..batch_count {
                         let start_pair = batch_idx * BATCH_SIZE;
@@ -2273,6 +2314,13 @@ pub mod referral_system {
                             
                             let upline_info = &upline_accounts[base_idx];
                             let upline_wallet = &upline_accounts[base_idx + 1];
+
+                            // Detect exploit attempt with duplicates
+                            let upline_key = upline_info.key();
+                            require!(
+                                processed_uplines.insert(upline_key),
+                                ErrorCode::DuplicateUplineExploit
+                            );
                             
                             if upline_wallet.owner != &solana_program::system_program::ID {
                                 return Err(error!(ErrorCode::PaymentWalletInvalid));
@@ -2414,7 +2462,7 @@ pub mod referral_system {
                                 notifications_made += 1;
                                 let is_last_notification = notifications_made == total_notifications;
                                 
-                                msg!("📊 Notificação {}/{} (última: {})", 
+                                msg!("📊 Notification {}/{} (last: {})", 
                                      notifications_made, total_notifications, is_last_notification);
                                 
                                 notify_airdrop_program(
@@ -2423,7 +2471,7 @@ pub mod referral_system {
                                     ctx.remaining_accounts,
                                     &ctx.accounts.system_program.to_account_info(),
                                     &ctx.accounts.user_wallet.to_account_info(),
-                                    is_last_notification,  // NOVO: flag calculada
+                                    is_last_notification,  // calculated flag
                                 )?;
                                 
                                 let state = &mut ctx.accounts.state;
