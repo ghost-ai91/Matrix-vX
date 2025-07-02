@@ -15,7 +15,7 @@ const path = require('path');
 
 // Receber parâmetros da linha de comando
 const args = process.argv.slice(2);
-const walletPath = args[0] || './carteiras/carteira15.jsonn';
+const walletPath = args[0] || './carteiras/carteira1.json';
 const configPath = args[1] || './matriz-config.json';
 
 // Função para dormir
@@ -74,7 +74,7 @@ async function main() {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     
     // Endereço do programa de airdrop
-    const AIRDROP_PROGRAM_ID = new PublicKey("J1Ad1njQ5snM2nADWr47pDxPJaicprCrwpqfzWmPv7DX");
+    const AIRDROP_PROGRAM_ID = new PublicKey("Fas2j1BN5L8zgPtQ92BJ3fB4aVqynJcZEihSrocmmkcm");
     
     // Conexão com parâmetros de timeout ampliados
     const connection = new Connection('https://weathered-quiet-theorem.solana-devnet.quiknode.pro/198997b67cb51804baeb34ed2257274aa2b2d8c0', {

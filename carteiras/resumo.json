@@ -1,124 +1,125 @@
-📋 Resumo dos endereços:
-Carteira 1: 4txsQtbcRHNDvDdf636gMPHKQu3vZvB86WxFnwjufJiR
-Carteira 2: E24dcX5Kp5wA4fa8vnbmNdpGd56LTPVwemXabnCkJQTQ
-Carteira 3: 12VY4JitsddJVTK5CJaTcdbDRzJtj96imbM4ZAMJfXiY
-Carteira 4: 5H3LvjQLtFRLD3NXEYJQcZkwSGEC642P7c4BEnUK1YoH
-Carteira 5: 564FwnB97XzBFU8Ct4W1toAzqVWVB5a7EQt4X8xASB9V
-Carteira 6: 4ukF59xbSsXYBfpy8zFMaTxNSRT9VVVEEo8qHvmwQJzC
-Carteira 7: EQ891puBRUYNRFqpYB9uaiP6AwqhcvhfCWkcgFBn2DLp
-Carteira 8: GwcTRmawwLQN8GHQh7EtG7TzznhQnY4draYzE4Z7628X
-Carteira 9: 5xdVrKW6SycyqHhtp3FuPRDVrodFCizq3Ypa4hSd4Gjr
-Carteira 10: 36UAvtNA4N35d9Bx4CUvqSvFkD6rtUx1gdv6qfGocMGq
-Carteira 11: 4c4ZTWJWJjoKjpQRqaM9JHrcDn4YF8g1zfQ3JrqLZh8c
-Carteira 12: FL4cNKzcye6WACnajt4KxxEbuRPgae7WX7pSfrPNg9Yb
-Carteira 13: AqsvdQ5QHJK4oFuCXTTec3VHQVAz2VwRDwzv63H2qqzP
-Carteira 14: AmxTvHPepTbeYdr17A3dHNVzcFadLhMPpbW92prvymGx
-Carteira 15: 4nn9JJt8GnFaeZYuR3DNvPDY14bsUa1bUfipumu2grgc
-Carteira 16: J7vJepfiyxHJR2QJPXqsvdMEnZj1GGDrnfepBG5W2QBg
-Carteira 17: DmH59pjwnyuexw3SGkKgfUczkfFfdsySv2MAQ7wfwtXv
-Carteira 18: vUTBxPnxJAJhnwTEivVNNX61iYUSJSibGTcmGNrWn6p
-Carteira 19: DP3jGWtCQXpwCnT85FtSEQkF9tvbEuTWXjrzqNNyGvk9
-Carteira 20: 4iBefqLdzTZ55hswnKPawnPRemxshpbAoWQifax9jqLp
+solana transfer AmxTvHPepTbeYdr17A3dHNVzcFadLhMPpbW92prvymGx 0.15 --allow-unfunded-recipient
 
-[
+  📋 Resumo dos endereços:
+Carteira 1: 3Z9qtcPigpk1JoScHPZPLidYe52WP5pS9jQ3AaFc7738
+Carteira 2: 6BwvEeRsdmA5JFXEyNyUbtTgH47TqGtNJ4x8z6SHMAMZ
+Carteira 3: vpwBJGRDQck52heoQjuFHL8mkp37ND9DjaUJy4Y3Se3
+Carteira 4: GYziKCEHcN6r9pCSRbHmgvitdtokRhNJgErmia5aVXd3
+Carteira 5: 85jtS696s2oF3HCN4rb8EVgQSx7icTMEG2xUBFRfW8hr
+Carteira 6: 3DpBQLfSMzUDUeaKV6eW4nw6r7kQ8ie5d6LF8DN1gg5c
+Carteira 7: HEYavDjrukamt8dHpbK4xvwzyy3KwJ8Qoxm9H64tKLrX
+Carteira 8: FWUGYKjse2rrKpdxAGpvWowUkuSg5DpxVtLV6xKSKETV
+Carteira 9: E4Qib8fjy8xDaz6sKjA9NqZZriFZEWpZLLZAnTk2xNhY
+Carteira 10: FrCoBe5DJXAFpQpXv6AC31e4DPsPrAi91VkQsTXmzice
+Carteira 11: HasW1sALj6jQ3NA1GN6t2MDVMc8sVYyGognHPDjSGMVj
+Carteira 12: GToMUMLauaWACtcf1tNixByDSWraGR15CL3pirmnHET
+Carteira 13: 7hovKtyketrxzHcJ3b1quAAyXbveUC7UBTLtp9yqh6So
+Carteira 14: ATx74VgZAZ4k5S2egGRnkspxcmim39tFKjaKTDUzkSMP
+Carteira 15: DhbAPk4ZBYf1Z2gXF1Ww1FxSSKSc3UaWrxwQ4Ln4xKNY
+Carteira 16: 9RC8yZbhMUH37GdjCrC9SYhuKUp67NF2Gja6NfWxmQ2a
+Carteira 17: ZCBDwuYRJv8HpHkmuZ8UCGBKKEb5ArEfhFhDmMF4EEN
+Carteira 18: EwHDoXQmbfgfLoxv8Gzg2j736cvQH1ydW2Sd6Q5K5r1a
+Carteira 19: FKoFE5C9hjMTY7z43FAcYKbjxYcpsBjK4bg24NMoqM1Q
+Carteira 20: DNd15yvcpKbw7AvGNGi6o95WzZdQexPf6Yi4XhzytwQy
+dark@MacBook-Air-de-Dark matrix % 
   {
     "index": 1,
-    "publicKey": "4txsQtbcRHNDvDdf636gMPHKQu3vZvB86WxFnwjufJiR",
+    "publicKey": "3Z9qtcPigpk1JoScHPZPLidYe52WP5pS9jQ3AaFc7738",
     "filePath": "carteiras/carteira1.json"
   },
   {
     "index": 2,
-    "publicKey": "E24dcX5Kp5wA4fa8vnbmNdpGd56LTPVwemXabnCkJQTQ",
+    "publicKey": "6BwvEeRsdmA5JFXEyNyUbtTgH47TqGtNJ4x8z6SHMAMZ",
     "filePath": "carteiras/carteira2.json"
   },
   {
     "index": 3,
-    "publicKey": "12VY4JitsddJVTK5CJaTcdbDRzJtj96imbM4ZAMJfXiY",
+    "publicKey": "vpwBJGRDQck52heoQjuFHL8mkp37ND9DjaUJy4Y3Se3",
     "filePath": "carteiras/carteira3.json"
   },
   {
     "index": 4,
-    "publicKey": "5H3LvjQLtFRLD3NXEYJQcZkwSGEC642P7c4BEnUK1YoH",
+    "publicKey": "GYziKCEHcN6r9pCSRbHmgvitdtokRhNJgErmia5aVXd3",
     "filePath": "carteiras/carteira4.json"
   },
   {
     "index": 5,
-    "publicKey": "564FwnB97XzBFU8Ct4W1toAzqVWVB5a7EQt4X8xASB9V",
+    "publicKey": "85jtS696s2oF3HCN4rb8EVgQSx7icTMEG2xUBFRfW8hr",
     "filePath": "carteiras/carteira5.json"
   },
   {
     "index": 6,
-    "publicKey": "4ukF59xbSsXYBfpy8zFMaTxNSRT9VVVEEo8qHvmwQJzC",
+    "publicKey": "3DpBQLfSMzUDUeaKV6eW4nw6r7kQ8ie5d6LF8DN1gg5c",
     "filePath": "carteiras/carteira6.json"
   },
   {
     "index": 7,
-    "publicKey": "EQ891puBRUYNRFqpYB9uaiP6AwqhcvhfCWkcgFBn2DLp",
+    "publicKey": "HEYavDjrukamt8dHpbK4xvwzyy3KwJ8Qoxm9H64tKLrX",
     "filePath": "carteiras/carteira7.json"
   },
   {
     "index": 8,
-    "publicKey": "GwcTRmawwLQN8GHQh7EtG7TzznhQnY4draYzE4Z7628X",
+    "publicKey": "FWUGYKjse2rrKpdxAGpvWowUkuSg5DpxVtLV6xKSKETV",
     "filePath": "carteiras/carteira8.json"
   },
   {
     "index": 9,
-    "publicKey": "5xdVrKW6SycyqHhtp3FuPRDVrodFCizq3Ypa4hSd4Gjr",
+    "publicKey": "E4Qib8fjy8xDaz6sKjA9NqZZriFZEWpZLLZAnTk2xNhY",
     "filePath": "carteiras/carteira9.json"
   },
   {
     "index": 10,
-    "publicKey": "36UAvtNA4N35d9Bx4CUvqSvFkD6rtUx1gdv6qfGocMGq",
+    "publicKey": "FrCoBe5DJXAFpQpXv6AC31e4DPsPrAi91VkQsTXmzice",
     "filePath": "carteiras/carteira10.json"
   },
   {
     "index": 11,
-    "publicKey": "4c4ZTWJWJjoKjpQRqaM9JHrcDn4YF8g1zfQ3JrqLZh8c",
+    "publicKey": "HasW1sALj6jQ3NA1GN6t2MDVMc8sVYyGognHPDjSGMVj",
     "filePath": "carteiras/carteira11.json"
   },
   {
     "index": 12,
-    "publicKey": "FL4cNKzcye6WACnajt4KxxEbuRPgae7WX7pSfrPNg9Yb",
+    "publicKey": "GToMUMLauaWACtcf1tNixByDSWraGR15CL3pirmnHET",
     "filePath": "carteiras/carteira12.json"
   },
   {
     "index": 13,
-    "publicKey": "AqsvdQ5QHJK4oFuCXTTec3VHQVAz2VwRDwzv63H2qqzP",
+    "publicKey": "7hovKtyketrxzHcJ3b1quAAyXbveUC7UBTLtp9yqh6So",
     "filePath": "carteiras/carteira13.json"
   },
   {
     "index": 14,
-    "publicKey": "AmxTvHPepTbeYdr17A3dHNVzcFadLhMPpbW92prvymGx",
+    "publicKey": "ATx74VgZAZ4k5S2egGRnkspxcmim39tFKjaKTDUzkSMP",
     "filePath": "carteiras/carteira14.json"
   },
   {
     "index": 15,
-    "publicKey": "4nn9JJt8GnFaeZYuR3DNvPDY14bsUa1bUfipumu2grgc",
+    "publicKey": "DhbAPk4ZBYf1Z2gXF1Ww1FxSSKSc3UaWrxwQ4Ln4xKNY",
     "filePath": "carteiras/carteira15.json"
   },
   {
     "index": 16,
-    "publicKey": "J7vJepfiyxHJR2QJPXqsvdMEnZj1GGDrnfepBG5W2QBg",
+    "publicKey": "9RC8yZbhMUH37GdjCrC9SYhuKUp67NF2Gja6NfWxmQ2a",
     "filePath": "carteiras/carteira16.json"
   },
   {
     "index": 17,
-    "publicKey": "DmH59pjwnyuexw3SGkKgfUczkfFfdsySv2MAQ7wfwtXv",
+    "publicKey": "ZCBDwuYRJv8HpHkmuZ8UCGBKKEb5ArEfhFhDmMF4EEN",
     "filePath": "carteiras/carteira17.json"
   },
   {
     "index": 18,
-    "publicKey": "vUTBxPnxJAJhnwTEivVNNX61iYUSJSibGTcmGNrWn6p",
+    "publicKey": "EwHDoXQmbfgfLoxv8Gzg2j736cvQH1ydW2Sd6Q5K5r1a",
     "filePath": "carteiras/carteira18.json"
   },
   {
     "index": 19,
-    "publicKey": "DP3jGWtCQXpwCnT85FtSEQkF9tvbEuTWXjrzqNNyGvk9",
+    "publicKey": "FKoFE5C9hjMTY7z43FAcYKbjxYcpsBjK4bg24NMoqM1Q",
     "filePath": "carteiras/carteira19.json"
   },
   {
     "index": 20,
-    "publicKey": "4iBefqLdzTZ55hswnKPawnPRemxshpbAoWQifax9jqLp",
+    "publicKey": "DNd15yvcpKbw7AvGNGi6o95WzZdQexPf6Yi4XhzytwQy",
     "filePath": "carteiras/carteira20.json"
   }
 ]
