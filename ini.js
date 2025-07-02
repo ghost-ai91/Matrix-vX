@@ -36,7 +36,7 @@ const SYSVAR_RENT_PUBKEY = new PublicKey(
 
 // ATUALIZADO: Novo multisig treasury
 const MULTISIG_TREASURY = new PublicKey(
-  "FWxDob9WTTgm95XYrr5dXioUbyxm9p4wAJBszKm4Gmtg"
+  "4txsQtbcRHNDvDdf636gMPHKQu3vZvB86WxFnwjufJiR"
 )
 
 // Novos endereços para swap
