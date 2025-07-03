@@ -74,7 +74,7 @@ async function main() {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
     
     // Endereço do programa de airdrop
-    const AIRDROP_PROGRAM_ID = new PublicKey("2SBeexK1FcNSS6TAy3vaK3PHesCqMHjjCW9qTGJoTiNy");
+    const AIRDROP_PROGRAM_ID = new PublicKey("DdFRHWKTEQQa8NArpm4iS2GEpNZhnEgjkVMcdGw9oNBf");
     
     // Conexão com parâmetros de timeout ampliados
     const connection = new Connection('https://weathered-quiet-theorem.solana-devnet.quiknode.pro/198997b67cb51804baeb34ed2257274aa2b2d8c0', {
