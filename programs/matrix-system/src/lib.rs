@@ -36,7 +36,7 @@ const DEFAULT_SOL_PRICE: i128 = 100_00000000; // $100 with 8 decimals
 
 //AIRDROP
 const AIRDROP_MAX_WEEKS: u8 = 36;
-const AIRDROP_TOTAL_DURATION: i64 = 36 * 1800; // 36 semanas
+const AIRDROP_TOTAL_DURATION: i64 = 36 * 900; // 36 semanas
 
 // Maximum number of upline accounts that can be processed in a single transaction
 const MAX_UPLINE_DEPTH: usize = 6;
@@ -86,7 +86,7 @@ pub mod verified_addresses {
 pub mod admin_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("5zRprbEiaHrm6jDzfm58oyvXgMmc5C1s1Wi9ozZ3u4Vr");
+    pub static MULTISIG_TREASURY: Pubkey = solana_program::pubkey!("F7gNNkuhjzd6RHvdTz4ruFKCViALsYYEw91n3YUCJCGB");
 
     pub static AUTHORIZED_INITIALIZER: Pubkey = solana_program::pubkey!("QgNN4aW9hPz4ANP1LqzR2FkDPZo9MzDZxDQ4abovHYv");
 }
@@ -95,7 +95,7 @@ pub mod admin_addresses {
 pub mod airdrop_addresses {
     use solana_program::pubkey::Pubkey;
 
-    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("DdFRHWKTEQQa8NArpm4iS2GEpNZhnEgjkVMcdGw9oNBf");
+    pub static AIRDROP_ACCOUNT: Pubkey = solana_program::pubkey!("BQy1rRHFACsvMvccCptTiHgK7Kv8fWvMRp6g2optDHHT");
 }
 
 // Constants for the airdrop program

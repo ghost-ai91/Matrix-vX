@@ -1,4 +1,4 @@
-// register-v12-final-optimized.js - Versão final otimizada sem 36 week PDAs
+// register-v15.js - Versão final com verificação correta do airdrop
 const { 
     Connection, 
     Keypair, 
@@ -98,6 +98,53 @@ const {
       programId: ASSOCIATED_TOKEN_PROGRAM_ID,
       data: Buffer.from([])
     });
+  }
+  
+  // NOVA FUNÇÃO: Verificar se o airdrop ainda está ativo
+  async function isAirdropActive(connection) {
+    console.log("\n🔍 Verificando status do airdrop...");
+    
+    const [programStatePda] = PublicKey.findProgramAddressSync(
+      [Buffer.from("program_state", "utf8")],
+      VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+    );
+    
+    try {
+      const stateAccountInfo = await connection.getAccountInfo(programStatePda);
+      if (!stateAccountInfo) {
+        console.log("⚠️ Estado do airdrop não encontrado - assumindo ativo");
+        return true;
+      }
+      
+      if (stateAccountInfo.data.length < 112) {
+        console.log("⚠️ Dados do airdrop incompletos - assumindo ativo");
+        return true;
+      }
+      
+      // Ler current_week (offset 72)
+      const currentWeek = stateAccountInfo.data[72];
+      
+      // Ler start_timestamp (offset 104-111)
+      const startTimestamp = stateAccountInfo.data.readBigInt64LE(104);
+      
+      // Verificar se passou 36 semanas
+      const now = Math.floor(Date.now() / 1000);
+      const elapsed = now - Number(startTimestamp);
+      const TOTAL_DURATION = 36 * 1800; // 36 semanas de 30 min (teste)
+      
+      console.log(`  📅 Semana atual do airdrop: ${currentWeek}/36`);
+      console.log(`  ⏱️ Tempo decorrido: ${Math.floor(elapsed / 60)} minutos`);
+      console.log(`  ⏱️ Duração total: ${Math.floor(TOTAL_DURATION / 60)} minutos`);
+      
+      const isActive = currentWeek < 36 && elapsed < TOTAL_DURATION;
+      console.log(`  📊 Status: ${isActive ? '✅ ATIVO' : '🏁 FINALIZADO'}`);
+      
+      return isActive;
+    } catch (error) {
+      console.log("⚠️ Erro ao verificar status do airdrop:", error.message);
+      console.log("⚠️ Assumindo airdrop como ativo por segurança");
+      return true;
+    }
   }
   
   // Função melhorada para aguardar ALT ficar pronta
@@ -530,23 +577,23 @@ const {
   
   // Função principal
   async function main() {
-    console.log("\n🚀 REGISTER V12 - VERSÃO FINAL OTIMIZADA 🚀");
-    console.log("==============================================");
-    console.log("📌 Principais otimizações:");
-    console.log("  ✅ Removidas 36 PDAs de semanas fixas");
-    console.log("  ✅ Derivação dinâmica de current/next week");
-    console.log("  ✅ Estrutura de uplines mantida");
-    console.log("  ✅ Economia de ~64% no tamanho da transação");
-    console.log("==============================================");
+    console.log("\n🚀 REGISTER V15 - VERSÃO FINAL COM VERIFICAÇÃO DE AIRDROP 🚀");
+    console.log("============================================================");
+    console.log("📌 Principais recursos:");
+    console.log("  ✅ Verifica se airdrop está ativo antes de registrar");
+    console.log("  ✅ Sempre envia PDAs reais para manter estrutura");
+    console.log("  ✅ Contrato verifica airdrop_active antes de processar");
+    console.log("  ✅ Sistema continua funcionando após fim do airdrop");
+    console.log("============================================================");
     
     const args = process.argv.slice(2);
     
     if (args.length < 3) {
       console.error("\n❌ ERRO: Argumentos insuficientes!");
       console.log("\n📖 USO:");
-      console.log("node register-v12-final-optimized.js <carteira> <config> <referenciador> [deposito]");
+      console.log("node register-v15.js <carteira> <config> <referenciador> [deposito]");
       console.log("\nEXEMPLO:");
-      console.log("node register-v12-final-optimized.js wallet.json config.json 5azaX9wJta8Z1gH3akQNPNZUKMXLGkYCmTqYK6gLpHb1 0.1");
+      console.log("node register-v15.js wallet.json config.json 5azaX9wJta8Z1gH3akQNPNZUKMXLGkYCmTqYK6gLpHb1 0.1");
       process.exit(1);
     }
     
@@ -607,6 +654,9 @@ const {
         process.exit(1);
       }
       
+      // NOVA VERIFICAÇÃO: Status do airdrop
+      const airdropActive = await isAirdropActive(connection);
+      
       // Verificar referenciador
       console.log("\n🔍 VERIFICANDO REFERENCIADOR...");
       const [referrerPDA] = PublicKey.findProgramAddressSync(
@@ -635,10 +685,13 @@ const {
       } else if (slotIndex === 2) {
         console.log("🔄 Slot 3: Paga SOL reservado e processa recursão");
         
-        if (!await isUserRegisteredInAirdrop(connection, referrerAddress)) {
+        // MODIFICADO: Só verifica registro no airdrop se estiver ativo
+        if (airdropActive && !await isUserRegisteredInAirdrop(connection, referrerAddress)) {
           console.log("\n⚠️ ATENÇÃO: O referenciador não está registrado no programa de airdrop!");
           console.log("❌ Não será possível completar a matriz sem registro no airdrop.");
           process.exit(1);
+        } else if (!airdropActive) {
+          console.log("📴 Airdrop finalizado - pulando verificação de registro do referenciador");
         }
       }
       
@@ -670,15 +723,19 @@ const {
         console.log("✅ Usuário não registrado, prosseguindo...");
       }
       
-      // Registrar no airdrop se necessário
-      if (!await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey)) {
-        const registered = await registerUserInAirdrop(connection, walletKeypair);
-        if (!registered) {
-          console.log("❌ Falha ao registrar no airdrop");
-          process.exit(1);
+      // MODIFICADO: Registrar no airdrop apenas se estiver ativo
+      if (airdropActive) {
+        if (!await isUserRegisteredInAirdrop(connection, walletKeypair.publicKey)) {
+          const registered = await registerUserInAirdrop(connection, walletKeypair);
+          if (!registered) {
+            console.log("❌ Falha ao registrar no airdrop");
+            process.exit(1);
+          }
+        } else {
+          console.log("✅ Usuário já registrado no airdrop");
         }
       } else {
-        console.log("✅ Usuário já registrado no airdrop");
+        console.log("📴 Airdrop finalizado - pulando registro no airdrop");
       }
       
       // Derivar PDAs
@@ -740,12 +797,17 @@ const {
                 console.log(`  ✅ Wallet: ${uplineWallet.toString()}`);
                 console.log(`  📊 Slots preenchidos: ${uplineInfo.chain.filledSlots}/3`);
                 
-                if (!await isUserRegisteredInAirdrop(connection, uplineWallet)) {
+                // MODIFICADO: Só verifica registro no airdrop se estiver ativo
+                if (airdropActive && !await isUserRegisteredInAirdrop(connection, uplineWallet)) {
                   console.log(`  ❌ Upline não registrado no airdrop!`);
                   continue;
+                } else if (!airdropActive) {
+                  console.log(`  📴 Airdrop finalizado - pulando verificação de registro`);
                 }
                 
-                console.log(`  ✅ Upline registrado no airdrop`);
+                if (airdropActive) {
+                  console.log(`  ✅ Upline registrado no airdrop`);
+                }
                 
                 // Adicionar par: PDA primeiro, wallet depois
                 uplineAccounts.push({
@@ -775,8 +837,44 @@ const {
           console.log("\n📊 Nenhum upline encontrado no referrer");
         }
         
-        // Preparar contas do airdrop
-        airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
+        // SEMPRE preparar contas do airdrop para manter estrutura
+        console.log("\n🪂 Preparando contas do airdrop (obrigatório para manter estrutura)...");
+        try {
+          airdropInfo = await prepareAirdropAccounts(connection, referrerAddress);
+        } catch (error) {
+          console.log("⚠️ Erro ao preparar contas do airdrop:", error.message);
+          console.log("📝 Criando estrutura mínima de fallback...");
+          
+          // Criar estrutura mínima se falhar
+          const [programStatePda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("program_state", "utf8")],
+            VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+          );
+          
+          const [userAccountPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("user_account", "utf8"), referrerAddress.toBuffer()],
+            VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+          );
+          
+          // Usar semana 36 como padrão se não conseguir ler
+          const [currentWeekDataPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("weekly_data", "utf8"), Buffer.from([36])],
+            VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+          );
+          
+          const [nextWeekDataPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("weekly_data", "utf8"), Buffer.from([36])],
+            VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+          );
+          
+          airdropInfo = {
+            programStatePda,
+            userAccountPda,
+            currentWeekDataPda,
+            nextWeekDataPda,
+            currentWeek: 36,
+          };
+        }
       }
       
       // Construir remaining accounts
@@ -796,10 +894,10 @@ const {
       
       let mainRemainingAccounts = [...vaultAAccounts, ...chainlinkAccounts];
       
+      // SEMPRE adicionar contas do airdrop no slot 3 para manter estrutura
       if (isSlot3 && airdropInfo) {
-        console.log("  ➕ Adicionando contas do airdrop...");
+        console.log("  ➕ Adicionando contas do airdrop (obrigatório para estrutura)...");
         
-        // IMPORTANTE: Usar as PDAs derivadas dinamicamente
         const airdropAccounts = [
           { pubkey: airdropInfo.programStatePda, isWritable: true, isSigner: false },
           { pubkey: airdropInfo.userAccountPda, isWritable: true, isSigner: false },
@@ -812,8 +910,12 @@ const {
         
         mainRemainingAccounts = [...mainRemainingAccounts, ...airdropAccounts];
         
-        console.log("  ✅ OTIMIZAÇÃO: NÃO adicionando 36 PDAs de semanas fixas!");
-        console.log(`  ✅ Usando semana atual: ${airdropInfo.currentWeek} e próxima: ${Math.min(airdropInfo.currentWeek + 1, 36)}`);
+        if (!airdropActive) {
+          console.log("  📴 Airdrop finalizado - PDAs enviadas apenas para manter estrutura");
+          console.log("  ℹ️ O contrato detectará airdrop_active=false e pulará notificações");
+        } else {
+          console.log(`  ✅ Usando semana atual: ${airdropInfo.currentWeek} e próxima: ${Math.min(airdropInfo.currentWeek + 1, 36)}`);
+        }
         
         // Adicionar PDAs do airdrop dos uplines ANTES dos pares
         if (uplineAccounts.length > 0) {
@@ -851,31 +953,27 @@ const {
       
       // DEBUG: Estrutura detalhada dos remaining accounts para slot 3
       if (isSlot3) {
-        console.log("\n🔍 ESTRUTURA OTIMIZADA DOS REMAINING ACCOUNTS:");
+        console.log("\n🔍 ESTRUTURA DOS REMAINING ACCOUNTS:");
         console.log(`  [0-3]: Vault A (4 contas)`);
         console.log(`  [4-5]: Chainlink (2 contas)`);
+        console.log(`  [6-12]: Airdrop base (7 contas) - SEMPRE PRESENTE`);
+        console.log(`    [6] program_state`);
+        console.log(`    [7] user_account (referrer no airdrop)`);
+        console.log(`    [8] current_week_data`);
+        console.log(`    [9] next_week_data`);
+        console.log(`    [10] referrer_wallet`);
+        console.log(`    [11] airdrop_program`);
+        console.log(`    [12] instructions_sysvar`);
         
-        if (airdropInfo) {
-          console.log(`  [6-12]: Airdrop base (7 contas)`);
-          console.log(`    [6] program_state`);
-          console.log(`    [7] user_account (referrer no airdrop)`);
-          console.log(`    [8] current_week_data (semana ${airdropInfo.currentWeek})`);
-          console.log(`    [9] next_week_data (semana ${Math.min(airdropInfo.currentWeek + 1, 36)})`);
-          console.log(`    [10] referrer_wallet`);
-          console.log(`    [11] airdrop_program`);
-          console.log(`    [12] instructions_sysvar`);
-          
-          if (uplineAccounts.length > 0) {
-            const uplineAirdropCount = uplineAccounts.length / 2;
-            console.log(`  [13-${12 + uplineAirdropCount}]: Upline Airdrop PDAs (${uplineAirdropCount} contas)`);
-            const uplineStart = 13 + uplineAirdropCount;
-            console.log(`  [${uplineStart}+]: Upline pairs (${uplineAccounts.length} contas = ${uplineAccounts.length/2} pares)`);
-          }
+        if (uplineAccounts.length > 0) {
+          const uplineAirdropCount = uplineAccounts.length / 2;
+          console.log(`  [13-${12 + uplineAirdropCount}]: Upline Airdrop PDAs (${uplineAirdropCount} contas)`);
+          const uplineStart = 13 + uplineAirdropCount;
+          console.log(`  [${uplineStart}+]: Upline pairs (${uplineAccounts.length} contas = ${uplineAccounts.length/2} pares)`);
         }
         
         console.log(`\n  📊 Total: ${mainRemainingAccounts.length} contas`);
-        console.log(`  💚 Economia: 36 PDAs de semanas removidas!`);
-        console.log(`  💚 Redução: ~64% no tamanho da transação!`);
+        console.log(`  ℹ️ Estrutura mantida para compatibilidade com recursividade`);
       }
       
       // Verificar cache de ALT
@@ -1077,8 +1175,12 @@ const {
           console.log("🔑 ALT utilizada: " + lookupTableAddress.toString());
           console.log("📊 Otimização: economizadas 36 PDAs de semanas!");
           console.log("🚀 Transação ~64% menor!");
-          console.log("✅ Airdrop integrado corretamente!");
-          console.log("==============================================");
+          if (airdropActive) {
+            console.log("✅ Airdrop integrado corretamente!");
+          } else {
+            console.log("📴 Sistema funcionando sem airdrop (período finalizado)!");
+          }
+          console.log("============================================================");
         } catch (e) {
           console.log("\n✅ Transação confirmada!");
           console.log("📝 Transação: " + signature);
