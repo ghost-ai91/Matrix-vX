@@ -205,6 +205,9 @@ async function main() {
         "🆔 Próximo ID de chain: " + stateInfo.nextChainId.toString()
       )
 
+      console.log("🪂 Airdrop Ativo: " + stateInfo.airdropActive)
+      console.log("📅 Airdrop End Timestamp: " + stateInfo.airdropEndTimestamp)
+
       // Verificar PDAs necessárias para integração
       console.log("\n🔑 PDAS PARA INTEGRAÇÃO:")
 
