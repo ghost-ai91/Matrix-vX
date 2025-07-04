@@ -1,27 +1,47 @@
-solana transfer FKrsJB43ZUpXz32ein5MKztsfWdJ81NJK2CzmfjNdEvM 0.15 --allow-unfunded-recipient
+solana transfer 29TFh2eUkccSarv4cctwevTg3tjGLjYd65ouXXodPV6Z 0.20 --allow-unfunded-recipient
 
 
-node referv14.js ./carteiras/carteira1.json ./matriz-config.json FWxDob9WTTgm95XYrr5dXioUbyxm9p4wAJBszKm4Gmtg 0.1
+node jito.js ./carteiras_new/carteira18.json ./matriz-config.json DApDgJyFgA7dksmoH9mVQwz96nmRKeSZw2PkQLnq53Cn 0.1
+
+
+"index": 5,
+    "publicKey": "6LrV1LrAQm8zk2Y2mdazL3YZXnKHc8H1eaBwcHNobe9r",
+    "filePath": "carteiras_new/carteira5.json"
+  },
+  {
+    "index": 6,
+    "publicKey": "7RGQQ4MdzdcreDq9PspFxP55o2gxeiAwS27J7ZdKyp2T",
+    "filePath": "carteiras_new/carteira6.json"
+  },
+  {
+    "index": 7,
+    "publicKey": "FbdUUwgastQkBp7JQdgRci9zCKS5TizNgq1kq8h7NkcL",
+    "filePath": "carteiras_new/carteira7.json"
 
 📋 Resumo dos endereços:
-Carteira 1: 5zRprbEiaHrm6jDzfm58oyvXgMmc5C1s1Wi9ozZ3u4Vr
+Carteira 1: 5zRprbEiaHrm6jDzfm58oyvXgMmc5C1s1Wi9ozZ3u4Vr BASE
 Carteira 2: 5evrREokzXzXA7XvPrbXB34CdSMRXNNj4vagudZDoKMp
 Carteira 3: EknfWF4JVPAXV6kPhLX1yJJdYTsVys9HopvwXuYGPc1f
 Carteira 4: 8EPL7CyvKT7vtTfT9ugFb4GCqcbc6F1sSvAjRtExADVa
+
 Carteira 5: Bfsiqh9YZ6VmANjmchUTb7ChsAZQm9jzJGFeoeR8WMh1
 Carteira 6: ApTpY6n7hZjUiyPpfNj1xmPqmQeuFsNTqMfAqVrL88PM
 Carteira 7: Ddhc6ZbG52wquWB859TsEDE9ePH3ZdZiQBB5M8Us7MVH
 Carteira 8: 8K4C1YK7khKviyP7cYSBPxjjtgxb1JbV8Zu4FFa14nwB
 Carteira 9: 7ejeWg1wVAqkqsA4zRB55AL4bptd6R4Vpgo7AMUhY2cY
+-----------------------
 Carteira 10: GuPRx67GVcTVb3GDf17PfZ14HDs1LSpoqAHAFEQU9pdF
 Carteira 11: GkC1sc14PJdsjtoy9Y8WkbbysbajPn6Z7LESzpzR9eM
 Carteira 12: F2Sh9iKGXQVZbkwFHo8jY3AJwa9AUj2hzjLbBjjZqAQe
+
 Carteira 13: E1NhfzqzCV174nFu1DRkVNZm7o5mSVmJmDdarNsvDT5T
 Carteira 14: 4URiX4BTsy7BfD8wV5k3cYR5H1p34DiR6Bitc6Ft7FLx
 Carteira 15: DApDgJyFgA7dksmoH9mVQwz96nmRKeSZw2PkQLnq53Cn
+
 Carteira 16: GYgMUXm3AjZ6qpoqimxHsWUgLnKtYZUyBKxoeWEQyRCW
 Carteira 17: D5tYYaXy6PjCY4pYLgWzQc3H63xjVqxFacBqz1XEcePw
 Carteira 18: 22tLmqFwKeANnPTuJQq3BDx5ajkM8DSwFZAmVvvmmmtA
+
 Carteira 19: 9ZNAoadVgu4aymCHAiicAqrZQGRuJPAqpz8tqT9wtdmf
 Carteira 20: FKrsJB43ZUpXz32ein5MKztsfWdJ81NJK2CzmfjNdEvM
 

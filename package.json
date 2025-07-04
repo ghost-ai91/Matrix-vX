@@ -10,12 +10,13 @@
     "register-ref": "node registro-referrer.js"
   },
   "dependencies": {
-    "@solana/web3.js": "1.95.3",
     "@coral-xyz/anchor": "0.29.0",
     "@solana/spl-token": "0.4.0",
+    "@solana/web3.js": "1.95.3",
     "bs58": "^5.0.0",
     "buffer": "^6.0.3",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "jito-ts": "^4.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
