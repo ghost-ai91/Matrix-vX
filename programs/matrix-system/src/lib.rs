@@ -36,9 +36,7 @@ const DEFAULT_SOL_PRICE: i128 = 100_00000000; // $100 with 8 decimals
 
 //AIRDROP
 const AIRDROP_MAX_WEEKS: u8 = 36;
-const AIRDROP_WEEK_DURATION: i64 = 1800; // 30 minutos em segundos
 const AIRDROP_TOTAL_DURATION: i64 = 36 * 1800; // 36 semanas
-
 
 // Maximum number of upline accounts that can be processed in a single transaction
 const MAX_UPLINE_DEPTH: usize = 6;
