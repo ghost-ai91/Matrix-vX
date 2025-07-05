@@ -894,6 +894,19 @@ const {
       
       let mainRemainingAccounts = [...vaultAAccounts, ...chainlinkAccounts];
       
+      // CORREÇÃO: SEMPRE adicionar a PDA do referrer no airdrop, independente do slot
+      const [referrerAirdropPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from("user_account"), referrerAddress.toBuffer()],
+        VERIFIED_ADDRESSES.AIRDROP_PROGRAM_ID
+      );
+      
+      console.log(`  ➕ Adicionando PDA do referrer no airdrop: ${referrerAirdropPDA.toString()}`);
+      mainRemainingAccounts.push({
+        pubkey: referrerAirdropPDA,
+        isWritable: false,
+        isSigner: false
+      });
+      
       // SEMPRE adicionar contas do airdrop no slot 3 para manter estrutura
       if (isSlot3 && airdropInfo) {
         console.log("  ➕ Adicionando contas do airdrop (obrigatório para estrutura)...");
@@ -951,30 +964,31 @@ const {
       
       console.log(`  📊 Total de remaining accounts: ${mainRemainingAccounts.length}`);
       
-      // DEBUG: Estrutura detalhada dos remaining accounts para slot 3
+      // DEBUG: Estrutura detalhada dos remaining accounts
+      console.log("\n🔍 ESTRUTURA DOS REMAINING ACCOUNTS:");
+      console.log(`  [0-3]: Vault A (4 contas)`);
+      console.log(`  [4-5]: Chainlink (2 contas)`);
+      console.log(`  [6]: PDA do referrer no airdrop - SEMPRE PRESENTE`);
+      
       if (isSlot3) {
-        console.log("\n🔍 ESTRUTURA DOS REMAINING ACCOUNTS:");
-        console.log(`  [0-3]: Vault A (4 contas)`);
-        console.log(`  [4-5]: Chainlink (2 contas)`);
-        console.log(`  [6-12]: Airdrop base (7 contas) - SEMPRE PRESENTE`);
-        console.log(`    [6] program_state`);
-        console.log(`    [7] user_account (referrer no airdrop)`);
-        console.log(`    [8] current_week_data`);
-        console.log(`    [9] next_week_data`);
-        console.log(`    [10] referrer_wallet`);
-        console.log(`    [11] airdrop_program`);
-        console.log(`    [12] instructions_sysvar`);
+        console.log(`  [7-13]: Airdrop base (7 contas) - APENAS SLOT 3`);
+        console.log(`    [7] program_state`);
+        console.log(`    [8] user_account (referrer no airdrop)`);
+        console.log(`    [9] current_week_data`);
+        console.log(`    [10] next_week_data`);
+        console.log(`    [11] referrer_wallet`);
+        console.log(`    [12] airdrop_program`);
+        console.log(`    [13] instructions_sysvar`);
         
         if (uplineAccounts.length > 0) {
           const uplineAirdropCount = uplineAccounts.length / 2;
-          console.log(`  [13-${12 + uplineAirdropCount}]: Upline Airdrop PDAs (${uplineAirdropCount} contas)`);
-          const uplineStart = 13 + uplineAirdropCount;
+          console.log(`  [14-${13 + uplineAirdropCount}]: Upline Airdrop PDAs (${uplineAirdropCount} contas)`);
+          const uplineStart = 14 + uplineAirdropCount;
           console.log(`  [${uplineStart}+]: Upline pairs (${uplineAccounts.length} contas = ${uplineAccounts.length/2} pares)`);
         }
-        
-        console.log(`\n  📊 Total: ${mainRemainingAccounts.length} contas`);
-        console.log(`  ℹ️ Estrutura mantida para compatibilidade com recursividade`);
       }
+      
+      console.log(`\n  📊 Total: ${mainRemainingAccounts.length} contas`);
       
       // Verificar cache de ALT
       console.log("\n🔍 Verificando cache de ALT...");

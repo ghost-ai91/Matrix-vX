@@ -202,7 +202,7 @@ fn notify_airdrop_program<'info>(
     user_wallet: &AccountInfo<'info>,
     is_last_notification: bool,
     state: &mut Account<'info, ProgramState>, // ADICIONAR PARÂMETRO
-) -> Result<()> {
+ ) -> Result<()> {
     msg!("Notifying airdrop: {} (last: {})", referrer_wallet, is_last_notification);
     
     // ADICIONAR: Verificar se airdrop está ativo
@@ -233,7 +233,7 @@ fn notify_airdrop_program<'info>(
                 error!(ErrorCode::MissingUplineAccount)
             })?
     };
-
+ 
     require!(
         program_state_account.key() == program_state_pda,
         ErrorCode::InvalidAirdropPDA
@@ -248,34 +248,52 @@ fn notify_airdrop_program<'info>(
         return Ok(());
     }
     
-    // Get current_week
-    let current_week = {
+    // Get current_week AND calculate actual_week
+    let (current_week, actual_week) = {
         let data_borrow = program_state_account.data.borrow();
-        if data_borrow.len() < 73 {
+        if data_borrow.len() < 112 {
             msg!("Program state data too small: {} bytes", data_borrow.len());
             return Err(error!(ErrorCode::MissingUplineAccount));
         }
-        let week = data_borrow[72];
-        msg!("Current airdrop week: {}", week);
-        week
+        
+        let stored_week = data_borrow[72];
+        
+        // Calcular actual week baseado no timestamp
+        let start_timestamp = i64::from_le_bytes([
+            data_borrow[104], data_borrow[105], data_borrow[106], data_borrow[107],
+            data_borrow[108], data_borrow[109], data_borrow[110], data_borrow[111]
+        ]);
+        
+        let clock = Clock::get()?;
+        let elapsed = clock.unix_timestamp.saturating_sub(start_timestamp);
+        let calculated_week = ((elapsed / 1800) + 1).min(36) as u8; // 1800 = 30 min
+        
+        msg!("Current airdrop week (stored): {}", stored_week);
+        msg!("Actual week (calculated): {}", calculated_week);
+        
+        (stored_week, calculated_week)
     };
     
-    // CHANGE: Derive all necessary PDAs using current_week
+    // CHANGE: Derive all necessary PDAs using current_week AND actual_week
     let user_account_seeds = &[b"user_account", referrer_wallet.as_ref()];
     let (user_account_pda, _) = Pubkey::find_program_address(user_account_seeds, &AIRDROP_PROGRAM_ID);
     
-    let week_bytes = current_week.to_le_bytes();
+    // PDA da current week (armazenada)
+    let current_week_bytes = current_week.to_le_bytes();
     let (current_week_data_pda, _) = Pubkey::find_program_address(
-        &[b"weekly_data".as_ref(), &week_bytes],
+        &[b"weekly_data".as_ref(), &current_week_bytes],
         &AIRDROP_PROGRAM_ID
     );
     
-    let next_week = current_week + 1;
-    let next_week_bytes = next_week.to_le_bytes();
-    let (next_week_data_pda, _) = Pubkey::find_program_address(
-        &[b"weekly_data".as_ref(), &next_week_bytes],
+    // PDA da actual week (calculada)
+    let actual_week_bytes = actual_week.to_le_bytes();
+    let (actual_week_data_pda, _) = Pubkey::find_program_address(
+        &[b"weekly_data".as_ref(), &actual_week_bytes],
         &AIRDROP_PROGRAM_ID
     );
+    
+    msg!("📅 Week PDAs - Current: {} (week {}), Actual: {} (week {})", 
+        current_week_data_pda, current_week, actual_week_data_pda, actual_week);
     
     // CHANGE: Smarter search considering known positions
     let mut referrer_wallet_info = None;
@@ -291,7 +309,7 @@ fn notify_airdrop_program<'info>(
         // [6] = program_state (obtained above)
         // [7] = user_account_pda
         // [8] = current_week_data
-        // [9] = next_week_data
+        // [9] = next_week_data (será actual_week_data)
         // [10] = referrer_wallet
         // [11] = airdrop_program
         // [12] = instructions_sysvar
@@ -302,7 +320,7 @@ fn notify_airdrop_program<'info>(
         if remaining_accounts[8].key() == current_week_data_pda {
             current_week_data_info = Some(&remaining_accounts[8]);
         }
-        if remaining_accounts[9].key() == next_week_data_pda {
+        if remaining_accounts[9].key() == actual_week_data_pda {
             next_week_data_info = Some(&remaining_accounts[9]);
         }
         if remaining_accounts[10].key() == *referrer_wallet {
@@ -330,7 +348,7 @@ fn notify_airdrop_program<'info>(
                 user_account_info = Some(account);
             } else if current_week_data_info.is_none() && key == current_week_data_pda {
                 current_week_data_info = Some(account);
-            } else if next_week_data_info.is_none() && key == next_week_data_pda {
+            } else if next_week_data_info.is_none() && key == actual_week_data_pda {
                 next_week_data_info = Some(account);
             } else if instructions_sysvar.is_none() && key == solana_program::sysvar::instructions::ID {
                 instructions_sysvar = Some(account);
@@ -350,7 +368,7 @@ fn notify_airdrop_program<'info>(
         msg!("User account PDA {} not found!", user_account_pda);
         error!(ErrorCode::UserNotRegisteredInAirdrop)  
     })?;
-
+ 
     // Validate user account PDA
     require!(
         user_account_info.key() == user_account_pda,
@@ -361,7 +379,7 @@ fn notify_airdrop_program<'info>(
         msg!("Current week data PDA not found!");
         error!(ErrorCode::MissingUplineAccount)
     })?;
-
+ 
     // Validate current week data PDA
     require!(
         current_week_data_info.key() == current_week_data_pda,
@@ -369,13 +387,13 @@ fn notify_airdrop_program<'info>(
     );
     
     let next_week_data_info = next_week_data_info.ok_or_else(|| {
-        msg!("Next week data PDA not found!");
+        msg!("Actual week data PDA not found!");
         error!(ErrorCode::MissingUplineAccount)
     })?;
-
-    // Validate next week data PDA
+ 
+    // Validate actual week data PDA
     require!(
-        next_week_data_info.key() == next_week_data_pda,
+        next_week_data_info.key() == actual_week_data_pda,
         ErrorCode::InvalidAirdropPDA
     );
     
@@ -387,9 +405,11 @@ fn notify_airdrop_program<'info>(
         error!(ErrorCode::MissingUplineAccount)
     })?;
     
-    // NEW: Create instruction data with flag
+    // NEW: Create instruction data with flag AND weeks
     let mut ix_data = NOTIFY_MATRIX_COMPLETION_DISCRIMINATOR.to_vec();
     ix_data.push(if is_last_notification { 1u8 } else { 0u8 });
+    ix_data.push(current_week);  // Adicionar current_week
+    ix_data.push(actual_week);    // Adicionar actual_week
     
     // Create CPI instruction
     let ix = Instruction {
@@ -399,12 +419,12 @@ fn notify_airdrop_program<'info>(
             AccountMeta::new(*referrer_wallet, false),
             AccountMeta::new(user_account_pda, false),
             AccountMeta::new(current_week_data_pda, false),
-            AccountMeta::new(next_week_data_pda, false),
+            AccountMeta::new(actual_week_data_pda, false),  // actual week em vez de next
             AccountMeta::new(user_wallet.key(), true),  // Payer
             AccountMeta::new_readonly(solana_program::system_program::id(), false),
             AccountMeta::new_readonly(solana_program::sysvar::instructions::ID, false),
         ],
-        data: ix_data,  // Using data with flag
+        data: ix_data,  // Using data with flag AND weeks
     };
     
     // Prepare accounts for CPI in correct order
@@ -413,7 +433,7 @@ fn notify_airdrop_program<'info>(
         referrer_wallet_info.clone(),
         user_account_info.clone(),
         current_week_data_info.clone(),
-        next_week_data_info.clone(),
+        next_week_data_info.clone(),  // é actual_week_data
         user_wallet.clone(),
         system_program.clone(),
         instructions_sysvar.clone(),
@@ -428,7 +448,7 @@ fn notify_airdrop_program<'info>(
     
     msg!("Airdrop notified successfully for {}", referrer_wallet);
     Ok(())
-}
+ }
 
 #[derive(Accounts)]
 pub struct MatrixCompletion<'info> {
